@@ -207,10 +207,10 @@ Real-time visualization of wand movements.
 This fork also serves a browser-rendered WebGL fluid canvas using the included WebGL Fluid Simulation. After restarting Home Assistant and enabling the wand's **Spell Tracking** switch, open:
 
 ```text
-/api/magic_caster_wand_fluid/fluid/<wand_id>
+/api/magic_caster_wand_fluid/fluid
 ```
 
-Replace `<wand_id>` with the last 8 characters used in the wand entity ids, for example `5363f8ea` from `sensor.mcwf_5363f8ea_spell`. Press all wand buttons while moving the wand to inject fluid into the canvas.
+If you have multiple wands, you can also open a specific one with `/api/magic_caster_wand_fluid/fluid/<wand_id>`. Press all wand buttons while moving the wand to inject fluid into the canvas.
 
 Fluid controls such as simulation resolution, dye resolution, dissipation, curl, splat radius/force, bloom, sunrays, and color cycling are available from the Magic Caster Wand Fluid Effects integration's **Configure** screen.
 

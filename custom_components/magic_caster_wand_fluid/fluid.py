@@ -25,6 +25,7 @@ CANVAS_WIDTH = 800
 CANVAS_HEIGHT = 600
 FRONTEND_PATH = Path(__file__).parent / "frontend" / "fluid"
 STATIC_URL = f"/{DOMAIN}_fluid"
+DEFAULT_PAGE_URL = f"/api/{DOMAIN}/fluid"
 PAGE_URL = f"/api/{DOMAIN}/fluid/{{entry_id}}"
 EVENTS_URL = f"/api/{DOMAIN}/fluid/{{entry_id}}/events"
 
@@ -42,6 +43,7 @@ async def async_setup_fluid(
         await hass.http.async_register_static_paths(
             [StaticPathConfig(STATIC_URL, str(FRONTEND_PATH), False)]
         )
+        hass.http.register_view(MagicCasterWandFluidDefaultPageView())
         hass.http.register_view(MagicCasterWandFluidPageView())
         hass.http.register_view(MagicCasterWandFluidEventsView())
         hass.data[DOMAIN]["_fluid_static_registered"] = True
@@ -227,19 +229,41 @@ class MagicCasterWandFluidPageView(HomeAssistantView):
     async def get(self, request: web.Request, entry_id: str) -> web.Response:
         """Return the visualizer HTML."""
         hass: HomeAssistant = request.app["hass"]
-        data = _get_entry_data(hass, entry_id)
-        if data is None:
-            return web.Response(status=404, text="Unknown Magic Caster Wand entry")
+        return _render_fluid_page(hass, entry_id)
 
-        html = hass.data[DOMAIN]["_fluid_index_html"]
-        html = html.replace("__MCW_ENTRY_ID__", json.dumps(entry_id))
-        html = html.replace("__MCW_EVENTS_URL__", json.dumps(EVENTS_URL.format(entry_id=entry_id)))
-        html = html.replace("__MCW_STATIC_URL__", STATIC_URL)
-        html = html.replace(
-            "__MCW_FLUID_CONFIG__",
-            json.dumps(data.get("fluid_config", build_fluid_config({}))),
-        )
-        return web.Response(text=html, content_type="text/html")
+
+class MagicCasterWandFluidDefaultPageView(HomeAssistantView):
+    """Serve the first configured WebGL fluid visualizer page."""
+
+    requires_auth = True
+    url = DEFAULT_PAGE_URL
+    name = f"api:{DOMAIN}:fluid:default"
+
+    async def get(self, request: web.Request) -> web.Response:
+        """Return the default visualizer HTML."""
+        hass: HomeAssistant = request.app["hass"]
+        entry_id = _get_first_entry_key(hass)
+        if entry_id is None:
+            return web.Response(status=404, text="No Magic Caster Wand Fluid Effects entry found")
+
+        return _render_fluid_page(hass, entry_id)
+
+
+def _render_fluid_page(hass: HomeAssistant, entry_id: str) -> web.Response:
+    """Render the WebGL fluid visualizer HTML for an entry key."""
+    data = _get_entry_data(hass, entry_id)
+    if data is None:
+        return web.Response(status=404, text="Unknown Magic Caster Wand entry")
+
+    html = hass.data[DOMAIN]["_fluid_index_html"]
+    html = html.replace("__MCW_ENTRY_ID__", json.dumps(entry_id))
+    html = html.replace("__MCW_EVENTS_URL__", json.dumps(EVENTS_URL.format(entry_id=entry_id)))
+    html = html.replace("__MCW_STATIC_URL__", STATIC_URL)
+    html = html.replace(
+        "__MCW_FLUID_CONFIG__",
+        json.dumps(data.get("fluid_config", build_fluid_config({}))),
+    )
+    return web.Response(text=html, content_type="text/html")
 
 
 class MagicCasterWandFluidEventsView(HomeAssistantView):
@@ -303,6 +327,14 @@ def _get_entry_data(hass: HomeAssistant, entry_key: str) -> dict[str, Any] | Non
         if normalized_key == identifier:
             return data
 
+    return None
+
+
+def _get_first_entry_key(hass: HomeAssistant) -> str | None:
+    """Return the first configured fluid entry id."""
+    for entry_key, data in hass.data.get(DOMAIN, {}).items():
+        if isinstance(data, dict) and "fluid_stream" in data:
+            return entry_key
     return None
 
 
