@@ -1353,18 +1353,24 @@ function connectWandFluidStream () {
     const debugEl = document.getElementById('mcw-fluid-debug');
     const stateUrl = window.MCW_FLUID_STATE_URL;
     const fallbackStateUrl = window.MCW_FLUID_DEFAULT_STATE_URL;
+    const eventsUrl = window.MCW_FLUID_EVENTS_URL;
     if (!stateUrl) {
         if (statusEl) statusEl.textContent = 'NO BACKEND';
         return;
     }
 
-    const wandPointer = pointers[0];
+    const wandPointer = new pointerPrototype();
+    const wandPointerId = -9001;
+    pointers.push(wandPointer);
     let lastBackendMessage = Date.now();
     let lastMotionMessage = 0;
     let lastSpell = '';
     let wasActive = false;
     let polling = false;
     let activeStateUrl = stateUrl;
+    let streamConnected = false;
+    let lastStreamMessage = 0;
+    let streamReconnectTimer = null;
     const wandMotion = {
         active: false,
         currentX: canvas.width / 2,
@@ -1392,12 +1398,12 @@ function connectWandFluidStream () {
         if (!wandPointer.down || !wasActive) {
             wandMotion.currentX = canvas.width / 2;
             wandMotion.currentY = canvas.height / 2;
-            updatePointerDownData(wandPointer, -1, wandMotion.currentX, wandMotion.currentY);
+            updatePointerDownData(wandPointer, wandPointerId, wandMotion.currentX, wandMotion.currentY);
             wasActive = true;
         }
 
-        wandMotion.currentX += (wandMotion.targetX - wandMotion.currentX) * 0.35;
-        wandMotion.currentY += (wandMotion.targetY - wandMotion.currentY) * 0.35;
+        wandMotion.currentX += (wandMotion.targetX - wandMotion.currentX) * 0.65;
+        wandMotion.currentY += (wandMotion.targetY - wandMotion.currentY) * 0.65;
         updatePointerMoveData(wandPointer, wandMotion.currentX, wandMotion.currentY);
     };
     smoothWandMotion();
@@ -1443,7 +1449,7 @@ function connectWandFluidStream () {
         if (data.active === true && !wandMotion.active) {
             wandMotion.currentX = canvas.width / 2;
             wandMotion.currentY = canvas.height / 2;
-            updatePointerDownData(wandPointer, -1, wandMotion.currentX, wandMotion.currentY);
+            updatePointerDownData(wandPointer, wandPointerId, wandMotion.currentX, wandMotion.currentY);
             wasActive = true;
         }
 
@@ -1476,7 +1482,38 @@ function connectWandFluidStream () {
         }
     };
 
+    const connectEventStream = () => {
+        if (!eventsUrl || !window.EventSource) return;
+        if (streamReconnectTimer) {
+            clearTimeout(streamReconnectTimer);
+            streamReconnectTimer = null;
+        }
+
+        const source = new EventSource(eventsUrl);
+        source.onopen = () => {
+            streamConnected = true;
+            lastStreamMessage = Date.now();
+        };
+        source.addEventListener('wand', event => {
+            try {
+                streamConnected = true;
+                lastStreamMessage = Date.now();
+                handlePayload(JSON.parse(event.data));
+            } catch (err) {
+                if (debugEl) debugEl.textContent = `BAD STREAM DATA / ${err.message || err}`;
+            }
+        });
+        source.onerror = () => {
+            streamConnected = false;
+            source.close();
+            if (!streamReconnectTimer) {
+                streamReconnectTimer = setTimeout(connectEventStream, 1500);
+            }
+        };
+    };
+
     const poll = async () => {
+        if (streamConnected && Date.now() - lastStreamMessage < 1000) return;
         if (polling) return;
         polling = true;
         try {
@@ -1495,6 +1532,7 @@ function connectWandFluidStream () {
         }
     };
 
+    connectEventStream();
     poll();
     setInterval(poll, 100);
 
@@ -1555,8 +1593,10 @@ canvas.addEventListener('mousedown', e => {
     let posX = scaleByPixelRatio(e.offsetX);
     let posY = scaleByPixelRatio(e.offsetY);
     let pointer = pointers.find(p => p.id == -1);
-    if (pointer == null)
+    if (pointer == null) {
         pointer = new pointerPrototype();
+        pointers.push(pointer);
+    }
     updatePointerDownData(pointer, -1, posX, posY);
 });
 
@@ -1569,18 +1609,22 @@ canvas.addEventListener('mousemove', e => {
 });
 
 window.addEventListener('mouseup', () => {
-    updatePointerUpData(pointers[0]);
+    let pointer = pointers.find(p => p.id == -1);
+    if (pointer != null) updatePointerUpData(pointer);
 });
 
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     const touches = e.targetTouches;
-    while (touches.length >= pointers.length)
-        pointers.push(new pointerPrototype());
     for (let i = 0; i < touches.length; i++) {
+        let pointer = pointers.find(p => p.id == touches[i].identifier);
+        if (pointer == null) {
+            pointer = new pointerPrototype();
+            pointers.push(pointer);
+        }
         let posX = scaleByPixelRatio(touches[i].pageX);
         let posY = scaleByPixelRatio(touches[i].pageY);
-        updatePointerDownData(pointers[i + 1], touches[i].identifier, posX, posY);
+        updatePointerDownData(pointer, touches[i].identifier, posX, posY);
     }
 });
 
@@ -1588,7 +1632,8 @@ canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     const touches = e.targetTouches;
     for (let i = 0; i < touches.length; i++) {
-        let pointer = pointers[i + 1];
+        let pointer = pointers.find(p => p.id == touches[i].identifier);
+        if (pointer == null) continue;
         if (!pointer.down) continue;
         let posX = scaleByPixelRatio(touches[i].pageX);
         let posY = scaleByPixelRatio(touches[i].pageY);

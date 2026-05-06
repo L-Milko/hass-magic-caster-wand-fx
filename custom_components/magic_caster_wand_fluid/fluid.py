@@ -147,7 +147,7 @@ class MagicCasterWandMotionStream:
 
     def subscribe(self) -> asyncio.Queue[dict[str, Any]]:
         """Subscribe to motion events."""
-        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=8)
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=32)
         self._subscribers.add(queue)
         queue.put_nowait(self._last_payload)
         return queue
@@ -521,7 +521,7 @@ class MagicCasterWandFluidEventsView(HomeAssistantView):
                 if payload.get("type") == "close":
                     break
 
-                message = f"event: wand\ndata: {json.dumps(payload)}\n\n"
+                message = f"event: wand\ndata: {json.dumps(_json_safe(payload))}\n\n"
                 await response.write(message.encode("utf-8"))
         except (asyncio.CancelledError, ConnectionResetError):
             pass
