@@ -201,8 +201,11 @@ let drawSpellsLastConnected = null;
 const extraFluidSettings = {
     HIDE_WAND_TEXT: true,
     HIDE_DRAW_SPELLS_MAIN: false,
-    LEARN_SPELLS: false
+    LEARN_SPELLS: false,
+    SHOW_SPELL_GESTURES: false,
+    AUTO_SCROLL_GESTURES: false
 };
+const gestureCards = new Map();
 
 function updateFluidControlPanel () {
     if (!fluidControlPanel) createFluidControlPanel();
@@ -310,6 +313,8 @@ function createExtraFluidSettingsSection () {
     [
         ['DRAW_SPELLS', 'Draw Spells'],
         ['LEARN_SPELLS', 'Learn Spells'],
+        ['SHOW_SPELL_GESTURES', 'Show Spell Gestures'],
+        ['AUTO_SCROLL_GESTURES', 'Auto Scroll Gestures'],
         ['HIDE_DRAW_SPELLS_MAIN', 'Hide Draw Spells from Main Window'],
         ['HIDE_WAND_TEXT', 'Hide Wand Text']
     ].forEach(([key, label]) => {
@@ -337,6 +342,13 @@ function createExtraFluidSettingsSection () {
             setLearnSpellsEnabled(input.checked);
             return;
         }
+        if (key === 'SHOW_SPELL_GESTURES' || key === 'AUTO_SCROLL_GESTURES') {
+            extraFluidSettings[key] = input.checked;
+            updateSpellGesturePanel();
+            updateDrawSpellsToggle();
+            updateExtraFluidSettingsPanel();
+            return;
+        }
 
         extraFluidSettings[key] = input.checked;
         updateOverlayVisibility();
@@ -350,10 +362,14 @@ function updateExtraFluidSettingsPanel () {
     if (!fluidControlPanel) return;
     const drawInput = fluidControlPanel.querySelector('[data-extra-fluid-key="DRAW_SPELLS"]');
     const learnInput = fluidControlPanel.querySelector('[data-extra-fluid-key="LEARN_SPELLS"]');
+    const gesturesInput = fluidControlPanel.querySelector('[data-extra-fluid-key="SHOW_SPELL_GESTURES"]');
+    const autoScrollInput = fluidControlPanel.querySelector('[data-extra-fluid-key="AUTO_SCROLL_GESTURES"]');
     const hideDrawInput = fluidControlPanel.querySelector('[data-extra-fluid-key="HIDE_DRAW_SPELLS_MAIN"]');
     const hideTextInput = fluidControlPanel.querySelector('[data-extra-fluid-key="HIDE_WAND_TEXT"]');
     if (drawInput) drawInput.checked = config.DRAW_SPELLS === true;
     if (learnInput) learnInput.checked = extraFluidSettings.LEARN_SPELLS === true;
+    if (gesturesInput) gesturesInput.checked = extraFluidSettings.SHOW_SPELL_GESTURES === true;
+    if (autoScrollInput) autoScrollInput.checked = extraFluidSettings.AUTO_SCROLL_GESTURES === true;
     if (hideDrawInput) hideDrawInput.checked = extraFluidSettings.HIDE_DRAW_SPELLS_MAIN === true;
     if (hideTextInput) hideTextInput.checked = extraFluidSettings.HIDE_WAND_TEXT === true;
 }
@@ -413,14 +429,79 @@ function readFluidControlValue (input, definition) {
     return Number(input.value);
 }
 
+function setupSpellGesturePanel () {
+    const gestureList = document.getElementById('mcw-spell-gesture-list');
+    if (!gestureList) return;
+
+    const gestures = Array.isArray(window.MCW_FLUID_GESTURES) ? window.MCW_FLUID_GESTURES : [];
+    gestureList.textContent = '';
+    gestureCards.clear();
+    gestures.forEach(gesture => {
+        if (!gesture || !gesture.key || !gesture.url) return;
+        const card = document.createElement('article');
+        card.className = 'spell-gesture-card';
+        card.dataset.spellKey = gesture.key;
+        card.innerHTML = '<div class="spell-gesture-name"></div><img alt="" loading="lazy">';
+        card.querySelector('.spell-gesture-name').textContent = gesture.title || formatSpellName(gesture.key);
+        const image = card.querySelector('img');
+        image.src = gesture.url;
+        image.alt = `${gesture.title || gesture.key} gesture`;
+        gestureList.appendChild(card);
+        if (!gestureCards.has(gesture.key)) gestureCards.set(gesture.key, card);
+    });
+
+    const autoScrollInput = document.getElementById('mcw-gesture-autoscroll');
+    if (autoScrollInput) {
+        autoScrollInput.checked = extraFluidSettings.AUTO_SCROLL_GESTURES === true;
+        autoScrollInput.addEventListener('change', () => {
+            extraFluidSettings.AUTO_SCROLL_GESTURES = autoScrollInput.checked;
+            updateExtraFluidSettingsPanel();
+        });
+    }
+    updateSpellGesturePanel();
+}
+
+function updateSpellGesturePanel () {
+    document.body.classList.toggle('gestures-open', extraFluidSettings.SHOW_SPELL_GESTURES === true);
+    const autoScrollInput = document.getElementById('mcw-gesture-autoscroll');
+    if (autoScrollInput && autoScrollInput.checked !== (extraFluidSettings.AUTO_SCROLL_GESTURES === true)) {
+        autoScrollInput.checked = extraFluidSettings.AUTO_SCROLL_GESTURES === true;
+    }
+}
+
+function normalizeSpellKey (spell) {
+    return String(spell || '')
+        .toLowerCase()
+        .replace(/^draw_/, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+}
+
+function highlightSpellGesture (spell) {
+    const spellKey = normalizeSpellKey(spell);
+    const card = gestureCards.get(spellKey);
+    if (!card) return;
+
+    card.classList.remove('is-recent');
+    void card.offsetWidth;
+    card.classList.add('is-recent');
+    if (extraFluidSettings.SHOW_SPELL_GESTURES === true && extraFluidSettings.AUTO_SCROLL_GESTURES === true) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    }
+}
+
 function updateDrawSpellsToggle () {
     const drawSpellsInput = document.getElementById('mcw-draw-spells');
     const learnSpellsInput = document.getElementById('mcw-learn-spells');
+    const showGesturesInput = document.getElementById('mcw-show-gestures');
     if (drawSpellsInput && drawSpellsInput.checked !== (config.DRAW_SPELLS === true)) {
         drawSpellsInput.checked = config.DRAW_SPELLS === true;
     }
     if (learnSpellsInput && learnSpellsInput.checked !== (extraFluidSettings.LEARN_SPELLS === true)) {
         learnSpellsInput.checked = extraFluidSettings.LEARN_SPELLS === true;
+    }
+    if (showGesturesInput && showGesturesInput.checked !== (extraFluidSettings.SHOW_SPELL_GESTURES === true)) {
+        showGesturesInput.checked = extraFluidSettings.SHOW_SPELL_GESTURES === true;
     }
     updateExtraFluidSettingsPanel();
     updateDrawSpellsDrawer();
@@ -476,6 +557,7 @@ function setLearnSpellsEnabled (enabled) {
 function setupDrawSpellsToggle () {
     const drawSpellsInput = document.getElementById('mcw-draw-spells');
     const learnSpellsInput = document.getElementById('mcw-learn-spells');
+    const showGesturesInput = document.getElementById('mcw-show-gestures');
     const tab = document.getElementById('mcw-draw-spells-tab');
     if (!drawSpellsInput) return;
 
@@ -492,6 +574,13 @@ function setupDrawSpellsToggle () {
     if (learnSpellsInput) {
         learnSpellsInput.addEventListener('change', () => {
             setLearnSpellsEnabled(learnSpellsInput.checked);
+        });
+    }
+    if (showGesturesInput) {
+        showGesturesInput.addEventListener('change', () => {
+            extraFluidSettings.SHOW_SPELL_GESTURES = showGesturesInput.checked;
+            updateSpellGesturePanel();
+            updateDrawSpellsToggle();
         });
     }
 }
@@ -541,6 +630,7 @@ async function fetchFluidConfig () {
 }
 
 applyHomeAssistantConfig();
+setupSpellGesturePanel();
 setupDrawSpellsToggle();
 updateOverlayVisibility();
 
@@ -2146,6 +2236,7 @@ function showFluidSpellName (spell, alreadyFormatted = false, mode = 'active') {
     spellEl.classList.add('is-cast-pulse');
     spellEl.style.opacity = '1';
     if (fluidSpellFadeTimer) clearTimeout(fluidSpellFadeTimer);
+    highlightSpellGesture(spellText);
     fluidSpellFadeTimer = setTimeout(() => {
         if (spellEl.textContent === spellText) {
             spellEl.style.opacity = '0';

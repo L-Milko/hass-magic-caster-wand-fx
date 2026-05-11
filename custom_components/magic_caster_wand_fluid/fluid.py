@@ -34,7 +34,9 @@ _LOGGER = logging.getLogger(__name__)
 CANVAS_WIDTH = 800
 CANVAS_HEIGHT = 600
 FRONTEND_PATH = Path(__file__).parent / "frontend" / "fluid"
+GESTURES_PATH = FRONTEND_PATH / "gestures"
 STATIC_URL = f"/{DOMAIN}_fluid"
+GESTURES_STATIC_URL = f"/{DOMAIN}_gestures"
 DEFAULT_PAGE_URL = f"/{DOMAIN}/fluid"
 PAGE_URL = f"/{DOMAIN}/fluid/{{entry_id}}"
 EVENTS_URL = f"/{DOMAIN}/fluid/{{entry_id}}/events"
@@ -60,8 +62,14 @@ async def async_setup_fluid(
         hass.data[DOMAIN]["_fluid_index_html"] = await hass.async_add_executor_job(
             _read_index_html
         )
+        hass.data[DOMAIN]["_fluid_gestures"] = await hass.async_add_executor_job(
+            _build_gesture_config
+        )
+        static_paths = [StaticPathConfig(STATIC_URL, str(FRONTEND_PATH), False)]
+        if GESTURES_PATH.exists():
+            static_paths.append(StaticPathConfig(GESTURES_STATIC_URL, str(GESTURES_PATH), False))
         await hass.http.async_register_static_paths(
-            [StaticPathConfig(STATIC_URL, str(FRONTEND_PATH), False)]
+            static_paths
         )
         hass.http.register_view(MagicCasterWandFluidDefaultPageView())
         hass.http.register_view(MagicCasterWandFluidPageView())
@@ -518,6 +526,10 @@ def _render_fluid_page(hass: HomeAssistant, entry_id: str) -> web.Response:
     html = html.replace("__MCW_SPELL_URL__", json.dumps(SPELL_URL.format(entry_id=entry_id)))
     html = html.replace("__MCW_STATIC_URL__", STATIC_URL)
     html = html.replace(
+        "__MCW_FLUID_GESTURES__",
+        json.dumps(hass.data[DOMAIN].get("_fluid_gestures", [])),
+    )
+    html = html.replace(
         "__MCW_FLUID_CONFIG__",
         json.dumps(data.get("fluid_config", build_fluid_config({}))),
     )
@@ -791,6 +803,29 @@ def _get_first_entry_key(hass: HomeAssistant) -> str | None:
 def _read_index_html() -> str:
     """Read the fluid visualizer HTML template."""
     return (FRONTEND_PATH / "index.html").read_text(encoding="utf-8")
+
+
+def _build_gesture_config() -> list[dict[str, str]]:
+    """Return browser-ready spell gesture metadata."""
+    if not GESTURES_PATH.exists():
+        return []
+
+    gestures: list[dict[str, str]] = []
+    for image_path in sorted(GESTURES_PATH.glob("*.png")):
+        spell_key = image_path.stem.lower()
+        gestures.append(
+            {
+                "key": spell_key,
+                "title": _format_spell_title(spell_key),
+                "url": f"{GESTURES_STATIC_URL}/{image_path.name}",
+            }
+        )
+    return gestures
+
+
+def _format_spell_title(spell_key: str) -> str:
+    """Format a snake-case spell id for display."""
+    return " ".join(word.capitalize() for word in spell_key.split("_"))
 
 
 def _finite_float(value: Any, default: float = 0.0) -> float:

@@ -23,9 +23,12 @@
       }
 
       canvas {
+        position: fixed;
+        inset: 0;
         display: block;
         width: 100%;
         height: 100%;
+        transition: left 220ms ease, width 220ms ease, height 220ms ease, bottom 220ms ease;
       }
 
       .status {
@@ -80,6 +83,102 @@
         background: none;
         -webkit-text-fill-color: rgba(255, 216, 80, 0.95);
         text-shadow: 0 0 14px rgba(255, 180, 0, 0.55);
+      }
+
+      body.gestures-open canvas {
+        left: 232px;
+        right: auto;
+        width: calc(100% - 232px);
+      }
+
+      body.gestures-open .spell {
+        left: calc(232px + ((100% - 232px) / 2));
+      }
+
+      .spell-gesture-panel {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 1;
+        display: none;
+        flex-direction: column;
+        width: 232px;
+        height: 100%;
+        color: rgba(255, 255, 255, 0.9);
+        background: rgba(0, 0, 0, 0.76);
+        border-right: 1px solid rgba(255, 255, 255, 0.16);
+        font: 12px/1.35 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body.gestures-open .spell-gesture-panel {
+        display: flex;
+      }
+
+      .spell-gesture-header {
+        flex: 0 0 auto;
+        padding: 10px 10px 8px;
+        background: rgba(0, 0, 0, 0.94);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      .spell-gesture-title {
+        margin-bottom: 8px;
+        color: rgba(255, 255, 255, 0.94);
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .spell-gesture-autoscroll {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+        color: rgba(255, 255, 255, 0.74);
+        text-transform: uppercase;
+      }
+
+      .spell-gesture-list {
+        flex: 1 1 auto;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        overflow: auto;
+        padding: 10px;
+        scrollbar-color: rgba(255, 255, 255, 0.24) rgba(0, 0, 0, 0.42);
+        scrollbar-width: thin;
+      }
+
+      .spell-gesture-card {
+        position: relative;
+        min-height: 118px;
+        padding: 8px;
+        overflow: hidden;
+        color: rgba(255, 255, 255, 0.88);
+        background: rgba(255, 255, 255, 0.055);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 6px;
+        text-align: center;
+      }
+
+      .spell-gesture-card.is-recent {
+        animation: gesture-cast-glow 2.4s ease-out;
+      }
+
+      @keyframes gesture-cast-glow {
+        0% { box-shadow: inset 0 0 0 999px rgba(85, 195, 255, 0.2), 0 0 22px rgba(100, 215, 255, 0.68); }
+        100% { box-shadow: inset 0 0 0 999px rgba(85, 195, 255, 0), 0 0 0 rgba(100, 215, 255, 0); }
+      }
+
+      .spell-gesture-card img {
+        width: min(132px, 100%);
+        height: 82px;
+        object-fit: contain;
+      }
+
+      .spell-gesture-name {
+        margin-bottom: 4px;
+        font-weight: 700;
+        text-transform: uppercase;
       }
 
       .debug {
@@ -317,6 +416,80 @@
         border: 1px solid rgba(255, 255, 255, 0.22);
         border-radius: 6px;
       }
+
+      @media (max-width: 720px) {
+        body.gestures-open canvas {
+          left: 0;
+          right: 0;
+          bottom: 154px;
+          width: 100%;
+          height: calc(100% - 154px);
+        }
+
+        body.gestures-open .spell {
+          left: 50%;
+        }
+
+        body.gestures-open .draw-spells-drawer {
+          bottom: 160px;
+        }
+
+        .spell-gesture-panel {
+          top: auto;
+          bottom: 0;
+          width: 100%;
+          height: 154px;
+          border-right: 0;
+          border-top: 1px solid rgba(255, 255, 255, 0.16);
+        }
+
+        .spell-gesture-header {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 10px;
+          align-items: center;
+          padding: 7px 10px;
+        }
+
+        .spell-gesture-title {
+          margin-bottom: 0;
+          white-space: nowrap;
+        }
+
+        .spell-gesture-list {
+          grid-auto-flow: column;
+          grid-auto-columns: 132px;
+          grid-template-columns: none;
+          overflow-x: auto;
+          overflow-y: hidden;
+          padding: 8px 10px 10px;
+        }
+
+        .spell-gesture-card {
+          min-height: 82px;
+          padding: 6px;
+        }
+
+        .spell-gesture-card img {
+          height: 54px;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .draw-spells-drawer:not(.is-collapsed) {
+          flex-direction: column;
+          align-items: flex-end;
+        }
+
+        .draw-spells-drawer:not(.is-collapsed) .draw-spells-tab {
+          width: 32px;
+          height: 28px;
+        }
+
+        .draw-spells-toggle {
+          min-height: 32px;
+        }
+      }
     </style>
     <script>
       window.MCW_FLUID_ENTRY_ID = __MCW_ENTRY_ID__;
@@ -326,6 +499,7 @@
       window.MCW_FLUID_SPELL_URL = __MCW_SPELL_URL__;
       window.MCW_FLUID_DEFAULT_STATE_URL = "/magic_caster_wand_fluid/fluid_state";
       window.MCW_FLUID_CONFIG = __MCW_FLUID_CONFIG__;
+      window.MCW_FLUID_GESTURES = __MCW_FLUID_GESTURES__;
     </script>
   </head>
   <body>
@@ -342,7 +516,21 @@
         <span>Learn Spells</span>
         <input type="checkbox" id="mcw-learn-spells">
       </label>
+      <label class="draw-spells-toggle" for="mcw-show-gestures">
+        <span>Gestures</span>
+        <input type="checkbox" id="mcw-show-gestures">
+      </label>
     </div>
+    <aside class="spell-gesture-panel" id="mcw-spell-gesture-panel" aria-label="Spell gestures">
+      <div class="spell-gesture-header">
+        <div class="spell-gesture-title">Spell Gestures</div>
+        <label class="spell-gesture-autoscroll" for="mcw-gesture-autoscroll">
+          <span>Auto Scroll</span>
+          <input type="checkbox" id="mcw-gesture-autoscroll">
+        </label>
+      </div>
+      <div class="spell-gesture-list" id="mcw-spell-gesture-list"></div>
+    </aside>
     <canvas></canvas>
     <script src="__MCW_STATIC_URL__/script.js"></script>
   </body>
