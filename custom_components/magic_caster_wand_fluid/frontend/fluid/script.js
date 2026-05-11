@@ -80,7 +80,6 @@ const defaultFluidConfig = {
     SHADING: true,
     LED_COLOR_NAME: 'White',
     MATCH_LED_COLOR: false,
-    DRAW_SPELLS: false,
     COLORFUL: false,
     COLOR_UPDATE_SPEED: 4,
     BLOOM: true,
@@ -199,6 +198,10 @@ let fluidControlsCollapsed = true;
 let fluidLiveUpdatePending = false;
 let drawSpellsDrawerCollapsed = false;
 let drawSpellsLastConnected = null;
+const extraFluidSettings = {
+    HIDE_WAND_TEXT: true,
+    HIDE_DRAW_SPELLS_MAIN: false
+};
 
 function updateFluidControlPanel () {
     if (!fluidControlPanel) createFluidControlPanel();
@@ -210,6 +213,7 @@ function updateFluidControlPanel () {
     fluidControlPanel.classList.toggle('is-collapsed', fluidControlsCollapsed);
     const collapseButton = fluidControlPanel.querySelector('[data-fluid-action="collapse"]');
     if (collapseButton) collapseButton.textContent = fluidControlsCollapsed ? '+' : '-';
+    updateExtraFluidSettingsPanel();
     fluidControlDefinitions.forEach(definition => {
         const { key, type } = definition;
         const input = fluidControlPanel.querySelector(`[data-fluid-key="${key}"]`);
@@ -250,6 +254,7 @@ function createFluidControlPanel () {
     actions.className = 'fluid-control-actions';
     actions.innerHTML = '<button type="button" data-fluid-action="save">Save</button><button type="button" data-fluid-action="default">Default</button>';
     body.appendChild(actions);
+    body.appendChild(createExtraFluidSettingsSection());
     document.body.appendChild(fluidControlPanel);
 
     fluidControlPanel.addEventListener('input', event => {
@@ -294,6 +299,55 @@ function createFluidControlPanel () {
         }
         saveFluidConfig(action);
     });
+}
+
+function createExtraFluidSettingsSection () {
+    const sectionEl = document.createElement('section');
+    sectionEl.className = 'fluid-control-section fluid-section-extra';
+    sectionEl.innerHTML = '<div class="fluid-control-section-title">Extra Settings</div>';
+
+    [
+        ['DRAW_SPELLS', 'Draw Spells'],
+        ['HIDE_DRAW_SPELLS_MAIN', 'Hide Draw Spells from Main Window'],
+        ['HIDE_WAND_TEXT', 'Hide Wand Text']
+    ].forEach(([key, label]) => {
+        const row = document.createElement('label');
+        row.className = 'fluid-control-row';
+        const name = document.createElement('span');
+        name.textContent = label;
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.dataset.extraFluidKey = key;
+        row.appendChild(name);
+        row.appendChild(input);
+        sectionEl.appendChild(row);
+    });
+
+    sectionEl.addEventListener('change', event => {
+        const input = event.target.closest('[data-extra-fluid-key]');
+        if (!input) return;
+        const key = input.dataset.extraFluidKey;
+        if (key === 'DRAW_SPELLS') {
+            setDrawSpellsEnabled(input.checked);
+            return;
+        }
+
+        extraFluidSettings[key] = input.checked;
+        updateOverlayVisibility();
+        updateExtraFluidSettingsPanel();
+    });
+
+    return sectionEl;
+}
+
+function updateExtraFluidSettingsPanel () {
+    if (!fluidControlPanel) return;
+    const drawInput = fluidControlPanel.querySelector('[data-extra-fluid-key="DRAW_SPELLS"]');
+    const hideDrawInput = fluidControlPanel.querySelector('[data-extra-fluid-key="HIDE_DRAW_SPELLS_MAIN"]');
+    const hideTextInput = fluidControlPanel.querySelector('[data-extra-fluid-key="HIDE_WAND_TEXT"]');
+    if (drawInput) drawInput.checked = config.DRAW_SPELLS === true;
+    if (hideDrawInput) hideDrawInput.checked = extraFluidSettings.HIDE_DRAW_SPELLS_MAIN === true;
+    if (hideTextInput) hideTextInput.checked = extraFluidSettings.HIDE_WAND_TEXT === true;
 }
 
 function createFluidControlRow (definition) {
@@ -356,6 +410,7 @@ function updateDrawSpellsToggle () {
     if (drawSpellsInput && drawSpellsInput.checked !== (config.DRAW_SPELLS === true)) {
         drawSpellsInput.checked = config.DRAW_SPELLS === true;
     }
+    updateExtraFluidSettingsPanel();
     updateDrawSpellsDrawer();
 }
 
@@ -369,10 +424,30 @@ function updateDrawSpellsDrawer (wandConnected) {
     const tab = document.getElementById('mcw-draw-spells-tab');
     if (!drawer) return;
     drawer.classList.toggle('is-collapsed', drawSpellsDrawerCollapsed);
+    drawer.classList.toggle('is-main-hidden', extraFluidSettings.HIDE_DRAW_SPELLS_MAIN === true);
     if (tab) {
         tab.textContent = drawSpellsDrawerCollapsed ? '‹' : '›';
         tab.title = drawSpellsDrawerCollapsed ? 'Show Draw Spells' : 'Hide Draw Spells';
     }
+}
+
+function updateOverlayVisibility () {
+    const statusEl = document.getElementById('mcw-fluid-status');
+    const debugEl = document.getElementById('mcw-fluid-debug');
+    const hideText = extraFluidSettings.HIDE_WAND_TEXT === true;
+    if (statusEl) statusEl.classList.toggle('overlay-hidden', hideText);
+    if (debugEl) debugEl.classList.toggle('overlay-hidden', hideText);
+    updateDrawSpellsDrawer();
+}
+
+function setDrawSpellsEnabled (enabled) {
+    applyFluidConfig({ DRAW_SPELLS: enabled });
+    fluidLiveUpdatePending = true;
+    saveFluidConfig('live', ['DRAW_SPELLS'])
+        .catch(() => {})
+        .finally(() => {
+            fluidLiveUpdatePending = false;
+        });
 }
 
 function setupDrawSpellsToggle () {
@@ -388,13 +463,7 @@ function setupDrawSpellsToggle () {
         });
     }
     drawSpellsInput.addEventListener('change', () => {
-        applyFluidConfig({ DRAW_SPELLS: drawSpellsInput.checked });
-        fluidLiveUpdatePending = true;
-        saveFluidConfig('live', ['DRAW_SPELLS'])
-            .catch(() => {})
-            .finally(() => {
-                fluidLiveUpdatePending = false;
-            });
+        setDrawSpellsEnabled(drawSpellsInput.checked);
     });
 }
 
@@ -403,7 +472,7 @@ async function saveFluidConfig (action, keys) {
     if (!configUrl) return;
     const definitions = Array.isArray(keys)
         ? fluidControlDefinitions.filter(definition => keys.includes(definition.key))
-        : fluidControlDefinitions;
+        : fluidControlDefinitions.filter(definition => definition.panel !== false);
     const payload = {
         action,
         persist: action === 'save' || action === 'live',
@@ -444,6 +513,7 @@ async function fetchFluidConfig () {
 
 applyHomeAssistantConfig();
 setupDrawSpellsToggle();
+updateOverlayVisibility();
 
 let pointers = [];
 let splatStack = [];
