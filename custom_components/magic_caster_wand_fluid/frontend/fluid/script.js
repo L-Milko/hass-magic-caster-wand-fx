@@ -155,6 +155,7 @@ function applyFluidConfig (nextConfig, refresh = true) {
     if (refresh && shouldResize) initFramebuffers();
     if (refresh && shouldUpdateKeywords) updateKeywords();
     updateFluidControlPanel();
+    updateDrawSpellsToggle();
 }
 
 const defaultCastingLedColors = Object.fromEntries(
@@ -182,7 +183,7 @@ const fluidControlDefinitions = [
     { key: 'SHADING', label: 'Shading', type: 'boolean', section: 'blue' },
     { key: 'LED_COLOR_NAME', label: 'Wand Tip', type: 'select', options: () => Object.keys(castingLedColors), section: 'white' },
     { key: 'MATCH_LED_COLOR', label: 'Match LED Color', type: 'boolean', section: 'white' },
-    { key: 'DRAW_SPELLS', label: 'Draw Spells', type: 'boolean', section: 'white' },
+    { key: 'DRAW_SPELLS', label: 'Draw Spells', type: 'boolean', section: 'white', panel: false },
     { key: 'COLORFUL', label: 'Colorful Trails', type: 'boolean', section: 'white' },
     { key: 'COLOR_UPDATE_SPEED', label: 'Color Update Speed', type: 'number', min: 1, max: 20, step: 0.1, section: 'white' },
     { key: 'BLOOM', label: 'Bloom', type: 'boolean', section: 'green' },
@@ -236,7 +237,7 @@ function createFluidControlPanel () {
         sectionEl.className = `fluid-control-section fluid-section-${section}`;
         sectionEl.innerHTML = `<div class="fluid-control-section-title">${title}</div>`;
         fluidControlDefinitions
-            .filter(definition => definition.section === section)
+            .filter(definition => definition.section === section && definition.panel !== false)
             .forEach(definition => {
                 sectionEl.appendChild(createFluidControlRow(definition));
             });
@@ -348,6 +349,29 @@ function readFluidControlValue (input, definition) {
     return Number(input.value);
 }
 
+function updateDrawSpellsToggle () {
+    const drawSpellsInput = document.getElementById('mcw-draw-spells');
+    if (drawSpellsInput && drawSpellsInput.checked !== (config.DRAW_SPELLS === true)) {
+        drawSpellsInput.checked = config.DRAW_SPELLS === true;
+    }
+}
+
+function setupDrawSpellsToggle () {
+    const drawSpellsInput = document.getElementById('mcw-draw-spells');
+    if (!drawSpellsInput) return;
+
+    updateDrawSpellsToggle();
+    drawSpellsInput.addEventListener('change', () => {
+        applyFluidConfig({ DRAW_SPELLS: drawSpellsInput.checked });
+        fluidLiveUpdatePending = true;
+        saveFluidConfig('live', ['DRAW_SPELLS'])
+            .catch(() => {})
+            .finally(() => {
+                fluidLiveUpdatePending = false;
+            });
+    });
+}
+
 async function saveFluidConfig (action, keys) {
     const configUrl = window.MCW_FLUID_CONFIG_URL;
     if (!configUrl) return;
@@ -393,6 +417,7 @@ async function fetchFluidConfig () {
 }
 
 applyHomeAssistantConfig();
+setupDrawSpellsToggle();
 
 let pointers = [];
 let splatStack = [];
