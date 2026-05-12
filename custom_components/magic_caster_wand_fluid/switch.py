@@ -35,6 +35,8 @@ async def async_setup_entry(
         McwConnectionSwitch(hass, address, mcw, connection_coordinator),
         McwSpellTrackingSwitch(hass, address, mcw, connection_coordinator),
     ]
+    if not data.get("draw_only", False):
+        entities.append(McwSpellLightEffectsSwitch(address, mcw, data))
     entities.extend(
         McwFluidRuntimeSwitch(address, mcw, data, switch_key)
         for switch_key in FLUID_RUNTIME_SWITCHES
@@ -173,6 +175,63 @@ class McwSpellTrackingSwitch(CoordinatorEntity, SwitchEntity):
             self._is_on = False
             async_dispatcher_send(self._hass, SIGNAL_SPELL_MODE_CHANGED)
             self.async_write_ha_state()
+
+
+class McwSpellLightEffectsSwitch(SwitchEntity, RestoreEntity):
+    """Switch entity for automatic successful spell light effects."""
+
+    _attr_has_entity_name = True
+
+    def __init__(self, address: str, mcw, data: dict) -> None:
+        """Initialize the spell light effects switch."""
+        self._address = address
+        self._mcw = mcw
+        self._data = data
+        self._identifier = address.replace(":", "")[-8:]
+        self._attr_name = "Spell Light Effects"
+        self._attr_unique_id = f"mcwf_{self._identifier}_spell_light_effects"
+        self._attr_icon = "mdi:creation"
+        self._data.setdefault("spell_light_effects", True)
+        if self._mcw is not None:
+            self._mcw.spell_light_effects_enabled = self.is_on
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return DeviceInfo(
+            connections={(CONNECTION_BLUETOOTH, self._address)},
+            name=f"Magic Caster Wand Fluid Effects {self._identifier}",
+            manufacturer=MANUFACTURER,
+        )
+
+    @property
+    def is_on(self) -> bool:
+        """Return true if spell light effects are enabled."""
+        return bool(self._data.get("spell_light_effects", True))
+
+    async def async_turn_on(self, **kwargs) -> None:
+        """Enable automatic spell light effects."""
+        self._set_enabled(True)
+
+    async def async_turn_off(self, **kwargs) -> None:
+        """Disable automatic spell light effects."""
+        self._set_enabled(False)
+
+    def _set_enabled(self, enabled: bool) -> None:
+        """Set automatic spell light effects."""
+        self._data["spell_light_effects"] = enabled
+        if self._mcw is not None:
+            self._mcw.spell_light_effects_enabled = enabled
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Restore previous light effects state."""
+        await super().async_added_to_hass()
+        last_state = await self.async_get_last_state()
+        if last_state is not None and last_state.state in {"on", "off"}:
+            self._set_enabled(last_state.state == "on")
+        else:
+            self._set_enabled(self.is_on)
 
 
 class McwFluidRuntimeSwitch(SwitchEntity, RestoreEntity):

@@ -10,6 +10,7 @@ from bleak_retry_connector import establish_connection
 from bluetooth_sensor_state_data import BluetoothData
 from home_assistant_bluetooth import BluetoothServiceInfoBleak
 
+from .macros import get_spell_macro
 from .mcw import McwClient, LedGroup, Macro
 from .remote_tensor_spell_detector import RemoteTensorSpellDetector
 from .spell_tracker import SpellTracker
@@ -55,6 +56,8 @@ class McwDevice:
         self._button_all_pressed: bool = False
         self._spell_reset_timeout_task: asyncio.Task[None] | None = None
         self._casting_led_color: tuple[int, int, int] = (0, 0, 255)  # Default color: blue
+        self._spell_light_effects_enabled: bool = True
+        self._spell_light_effect_task: asyncio.Task[None] | None = None
         self._server_reachable: bool = False
 
         self._init_spell_tracker()
@@ -110,6 +113,7 @@ class McwDevice:
         if self._coordinator_spell:
             self._coordinator_spell.async_set_updated_data(data)
             self._schedule_spell_reset()
+            self._schedule_spell_light_effect(data)
 
     def _callback_battery(self, data: float) -> None:
         """Handle battery update callback."""
@@ -149,7 +153,31 @@ class McwDevice:
             _LOGGER.debug("Server-side spell detected: %s", spell_name)
             self._coordinator_spell.async_set_updated_data(spell_name)
             self._schedule_spell_reset()
-            await self.buzz(100)
+            await self._play_spell_light_effect(spell_name)
+
+    def _schedule_spell_light_effect(self, spell_name: str) -> None:
+        """Schedule the configured light effect for a detected spell."""
+        self._spell_light_effect_task = asyncio.create_task(
+            self._play_spell_light_effect(spell_name)
+        )
+
+    async def _play_spell_light_effect(self, spell_name: str) -> None:
+        """Play a successful spell macro across the wand LEDs."""
+        if not self._spell_light_effects_enabled or not self._mcw:
+            return
+
+        name = str(spell_name or "").strip()
+        if not name or name == "awaiting" or name.startswith("draw_"):
+            return
+
+        macro = get_spell_macro(name)
+        try:
+            if macro is not None:
+                await self._mcw.send_macro(macro)
+            else:
+                await self.buzz(100)
+        except Exception as err:
+            _LOGGER.warning("Failed to play spell light effect for %s: %s", name, err)
 
     async def _turn_on_casting_led(self) -> None:
         """Turn on the casting LED with configured color."""
@@ -314,6 +342,16 @@ class McwDevice:
     def casting_led_color(self, value: tuple[int, int, int]) -> None:
         """Set the casting LED color."""
         self._casting_led_color = value
+
+    @property
+    def spell_light_effects_enabled(self) -> bool:
+        """Return whether successful spell light effects are enabled."""
+        return self._spell_light_effects_enabled
+
+    @spell_light_effects_enabled.setter
+    def spell_light_effects_enabled(self, value: bool) -> None:
+        """Enable or disable successful spell light effects."""
+        self._spell_light_effects_enabled = bool(value)
 
     @property
     def spell_detection_mode(self) -> str:
