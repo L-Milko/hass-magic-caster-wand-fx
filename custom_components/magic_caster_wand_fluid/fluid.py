@@ -152,6 +152,8 @@ class MagicCasterWandMotionStream:
         self._unsubscribers: list[Callable[[], None]] = []
         self._sequence = 0
         self._spell_event_id = 0
+        self._display_lumos_level = 0
+        self._display_spell = "awaiting"
         self._learn_spell_name = "awaiting"
         self._learn_spell_event_id = 0
         self._learn_spell_ts = 0.0
@@ -237,7 +239,12 @@ class MagicCasterWandMotionStream:
         spell = self._spell_coordinator.data or "awaiting"
         if spell != "awaiting":
             self._spell_event_id += 1
-        self._publish(self._status_payload())
+            self._display_spell = self._display_spell_name(spell)
+        else:
+            self._display_spell = "awaiting"
+        payload = self._status_payload()
+        payload["spell"] = self._display_spell
+        self._publish(payload)
 
     @callback
     def _handle_learn_spell_update(self, spell: str, event_id: int) -> None:
@@ -246,11 +253,27 @@ class MagicCasterWandMotionStream:
         self._learn_spell_event_id = event_id
         self._learn_spell_ts = time()
         payload = self._status_payload()
-        payload["spell"] = spell
+        payload["spell"] = self._display_spell_name(spell)
         payload["spell_event_id"] = event_id
         payload["spell_mode"] = "learning"
         payload["spell_ts"] = self._learn_spell_ts
         self._publish(payload)
+
+    def _display_spell_name(self, spell: str) -> str:
+        """Return the display name for spell events, including local Lumos Maxima."""
+        name = str(spell or "").strip()
+        key = name.lower().replace(" ", "_").replace("-", "_")
+        if key == "lumos":
+            if self._display_lumos_level <= 0:
+                self._display_lumos_level = 1
+                return name
+            self._display_lumos_level = 0
+            return "lumos_maxima"
+        if key == "nox":
+            self._display_lumos_level = 0
+        elif key and key != "awaiting":
+            self._display_lumos_level = 0
+        return name
 
     def _regular_spell_fields(self) -> dict[str, Any]:
         """Return regular spell fields, hiding stale automation spells in learn mode."""
@@ -261,7 +284,7 @@ class MagicCasterWandMotionStream:
                 "spell_mode": "active",
             }
         return {
-            "spell": self._spell_coordinator.data or "awaiting",
+            "spell": self._display_spell,
             "spell_event_id": self._spell_event_id,
             "spell_mode": "active",
         }
@@ -774,6 +797,7 @@ class MagicCasterWandFluidSpellView(HomeAssistantView):
         play_feedback = getattr(mcw, "async_play_spell_feedback", None)
         if callable(play_feedback):
             await play_feedback(spell_name)
+        display_spell_name = _display_spell_name_for_draw(data, spell_name)
 
         stream: MagicCasterWandMotionStream | None = data.get("fluid_stream")
         if stream is not None:
@@ -782,7 +806,8 @@ class MagicCasterWandFluidSpellView(HomeAssistantView):
         return web.json_response(
             {
                 "recognized": True,
-                "spell": spell_name,
+                "spell": display_spell_name,
+                "recognized_spell": spell_name,
                 "automation_spell": None if learn_mode else drawn_spell_name,
                 "source": "learn" if learn_mode else "draw",
             }
@@ -857,9 +882,18 @@ def _build_gesture_config() -> list[dict[str, str]]:
     if not GESTURES_PATH.exists():
         return []
 
+    hidden_gestures = {
+        "colvaria",
+        "entomorphls",
+        "immobulus_spell_path_two",
+        "immobulus_two",
+        "the_spell_thickening_charm",
+    }
     gestures: list[dict[str, str]] = []
     for image_path in sorted(GESTURES_PATH.glob("*.png")):
         spell_key = image_path.stem.lower()
+        if spell_key in hidden_gestures:
+            continue
         gestures.append(
             {
                 "key": spell_key,
@@ -873,6 +907,22 @@ def _build_gesture_config() -> list[dict[str, str]]:
 def _format_spell_title(spell_key: str) -> str:
     """Format a snake-case spell id for display."""
     return " ".join(word.capitalize() for word in spell_key.split("_"))
+
+
+def _display_spell_name_for_draw(data: dict[str, Any], spell_name: str) -> str:
+    """Return browser display spell name for pointer casts."""
+    name = str(spell_name or "").strip()
+    key = name.lower().replace(" ", "_").replace("-", "_")
+    if key == "lumos":
+        level = int(data.get("_draw_display_lumos_level", 0) or 0)
+        if level <= 0:
+            data["_draw_display_lumos_level"] = 1
+            return name
+        data["_draw_display_lumos_level"] = 0
+        return "lumos_maxima"
+    if key and key != "awaiting":
+        data["_draw_display_lumos_level"] = 0
+    return name
 
 
 def _finite_float(value: Any, default: float = 0.0) -> float:

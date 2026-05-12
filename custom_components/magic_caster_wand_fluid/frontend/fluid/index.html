@@ -445,10 +445,15 @@
 
         .spell-gesture-header {
           display: grid;
-          grid-template-columns: auto 1fr;
+          grid-template-columns: 1fr auto;
           gap: 10px;
           align-items: center;
           padding: 7px 10px;
+        }
+
+        .spell-gesture-autoscroll {
+          grid-template-columns: auto auto;
+          justify-self: end;
         }
 
         .spell-gesture-title {
@@ -517,13 +522,13 @@
         <input type="checkbox" id="mcw-learn-spells">
       </label>
       <label class="draw-spells-toggle" for="mcw-show-gestures">
-        <span>Gestures</span>
+        <span>Spell Book</span>
         <input type="checkbox" id="mcw-show-gestures">
       </label>
     </div>
-    <aside class="spell-gesture-panel" id="mcw-spell-gesture-panel" aria-label="Spell gestures">
+    <aside class="spell-gesture-panel" id="mcw-spell-gesture-panel" aria-label="Spell book">
       <div class="spell-gesture-header">
-        <div class="spell-gesture-title">Spell Gestures</div>
+        <div class="spell-gesture-title">Spell Book</div>
         <label class="spell-gesture-autoscroll" for="mcw-gesture-autoscroll">
           <span>Auto Scroll</span>
           <input type="checkbox" id="mcw-gesture-autoscroll">

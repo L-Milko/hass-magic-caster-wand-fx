@@ -317,8 +317,8 @@ function createExtraFluidSettingsSection () {
         ['LEARN_SPELLS', 'Learn Spells'],
         ['SPELL_LIGHT_EFFECTS', 'Spell Light Effects'],
         ['SPELL_VIBRATION', 'Spell Vibration'],
-        ['SHOW_SPELL_GESTURES', 'Show Spell Gestures'],
-        ['AUTO_SCROLL_GESTURES', 'Auto Scroll Gestures'],
+        ['SHOW_SPELL_GESTURES', 'Show Spell Book'],
+        ['AUTO_SCROLL_GESTURES', 'Auto Scroll Spell Book'],
         ['HIDE_DRAW_SPELLS_MAIN', 'Hide Cast Spells from Main Window'],
         ['HIDE_WAND_TEXT', 'Hide Wand Text']
     ].forEach(([key, label]) => {
@@ -457,7 +457,7 @@ function setupSpellGesturePanel () {
         card.querySelector('.spell-gesture-name').textContent = gesture.title || formatSpellName(gesture.key);
         const image = card.querySelector('img');
         image.src = gesture.url;
-        image.alt = `${gesture.title || gesture.key} gesture`;
+        image.alt = `${gesture.title || gesture.key} spell book guide`;
         gestureList.appendChild(card);
         if (!gestureCards.has(gesture.key)) gestureCards.set(gesture.key, card);
     });

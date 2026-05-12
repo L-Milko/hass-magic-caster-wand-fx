@@ -241,7 +241,7 @@ class McwDevice:
             if self._lumos_level <= 0:
                 self._lumos_level = 1
                 return self._lumos_macro(include_vibration, maxima=False)
-            self._lumos_level = 2
+            self._lumos_level = 0
             return self._lumos_macro(include_vibration, maxima=True)
 
         self._lumos_level = 0
@@ -276,50 +276,29 @@ class McwDevice:
         r, g, b = color
         dim = self._scale_color(color, 0.28)
         mid = self._scale_color(color, 0.62)
-        glow = self._scale_color(color, 0.12)
         macro = Macro()
         if include_vibration:
             macro.add_buzz(120)
         return (
             macro
-            .add_led(LedGroup.POMMEL, *glow, 90)
+            .add_led(LedGroup.POMMEL, *dim, 90)
             .add_delay(45)
-            .add_led(LedGroup.MID_LOWER, *dim, 110)
+            .add_led(LedGroup.MID_LOWER, *mid, 110)
             .add_delay(45)
-            .add_led(LedGroup.MID_UPPER, *mid, 130)
+            .add_led(LedGroup.MID_UPPER, r, g, b, 130)
             .add_delay(45)
-            .add_led(LedGroup.TIP, r, g, b, 180)
-            .add_delay(130)
-            .add_led(LedGroup.POMMEL, r, g, b, 170)
-            .add_led(LedGroup.MID_LOWER, r, g, b, 170)
-            .add_led(LedGroup.MID_UPPER, r, g, b, 170)
             .add_led(LedGroup.TIP, 255, 255, 255, 120)
-            .add_delay(180)
-            .add_led(LedGroup.POMMEL, *glow, 140)
-            .add_led(LedGroup.MID_LOWER, *glow, 140)
-            .add_led(LedGroup.MID_UPPER, *glow, 140)
-            .add_led(LedGroup.TIP, *mid, 140)
-            .add_delay(120)
+            .add_delay(140)
             .add_led(LedGroup.POMMEL, *mid, 150)
             .add_led(LedGroup.MID_LOWER, r, g, b, 150)
             .add_led(LedGroup.MID_UPPER, r, g, b, 150)
             .add_led(LedGroup.TIP, 255, 255, 255, 110)
-            .add_delay(170)
+            .add_delay(160)
             .add_led(LedGroup.POMMEL, *dim, 180)
             .add_led(LedGroup.MID_LOWER, *dim, 180)
             .add_led(LedGroup.MID_UPPER, *dim, 180)
             .add_led(LedGroup.TIP, *mid, 180)
-            .add_delay(150)
-            .add_led(LedGroup.POMMEL, *mid, 320)
-            .add_led(LedGroup.MID_LOWER, *mid, 320)
-            .add_led(LedGroup.MID_UPPER, *mid, 320)
-            .add_led(LedGroup.TIP, *mid, 320)
-            .add_delay(260)
-            .add_led(LedGroup.POMMEL, *dim, 360)
-            .add_led(LedGroup.MID_LOWER, *dim, 360)
-            .add_led(LedGroup.MID_UPPER, *dim, 360)
-            .add_led(LedGroup.TIP, *dim, 360)
-            .add_delay(320)
+            .add_delay(220)
             .add_led(LedGroup.POMMEL, 0, 0, 0, 420)
             .add_led(LedGroup.MID_LOWER, 0, 0, 0, 420)
             .add_led(LedGroup.MID_UPPER, 0, 0, 0, 420)
@@ -356,13 +335,24 @@ class McwDevice:
                 .add_led_hex(LedGroup.MID_LOWER, "FFFFFF", 400)
                 .add_led_hex(LedGroup.MID_UPPER, "FFFFFF", 400)
                 .add_led_hex(LedGroup.TIP, "FFFFFF", 400)
+                .add_delay(3200)
+                .add_led_hex(LedGroup.POMMEL, "666666", 460)
+                .add_led_hex(LedGroup.MID_LOWER, "666666", 460)
+                .add_led_hex(LedGroup.MID_UPPER, "666666", 460)
+                .add_led_hex(LedGroup.TIP, "777777", 460)
+                .add_delay(420)
+                .add_led(LedGroup.POMMEL, 0, 0, 0, 560)
+                .add_led(LedGroup.MID_LOWER, 0, 0, 0, 560)
+                .add_led(LedGroup.MID_UPPER, 0, 0, 0, 560)
+                .add_led(LedGroup.TIP, 0, 0, 0, 560)
+                .add_delay(560)
+                .add_clear()
             )
 
+        r, g, b = self._casting_led_color
         return (
             macro
-            .add_led_hex(LedGroup.MID_UPPER, "9999FF", 120)
-            .add_delay(80)
-            .add_led_hex(LedGroup.TIP, "FFFFFF", 500)
+            .add_led(LedGroup.TIP, r, g, b, 500)
         )
 
     def _spell_color(self, spell_name: str) -> tuple[int, int, int]:
