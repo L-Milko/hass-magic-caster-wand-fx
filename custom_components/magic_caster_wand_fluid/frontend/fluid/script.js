@@ -201,6 +201,10 @@ let fluidControlsCollapsed = true;
 let fluidLiveUpdatePending = false;
 let drawSpellsDrawerCollapsed = false;
 let drawSpellsLastConnected = null;
+let wandConnectPanelOpen = false;
+let wandConnectRefreshLocked = false;
+let wandConnectAutoTrackingTimer = null;
+let wandConnectLastConnected = null;
 const extraFluidSettings = {
     HIDE_WAND_TEXT: true,
     HIDE_DRAW_SPELLS_MAIN: false,
@@ -526,6 +530,70 @@ function updateSpellGesturePanel () {
     }
 }
 
+function updateWandConnectPanel (connected) {
+    const panel = document.getElementById('mcw-wand-connect-panel');
+    const tab = document.getElementById('mcw-wand-connect-tab');
+    const toggle = document.getElementById('mcw-wand-connect-toggle');
+    if (panel) panel.classList.toggle('is-open', wandConnectPanelOpen);
+    if (tab) {
+        tab.classList.toggle('is-open', wandConnectPanelOpen);
+        tab.classList.toggle('is-connected', connected === true);
+        tab.title = connected === true ? 'Wand Connected' : 'Wand Connection';
+    }
+    if (toggle && toggle.checked !== (connected === true)) {
+        toggle.checked = connected === true;
+    }
+}
+
+function setWandRefreshLocked () {
+    const refreshButton = document.getElementById('mcw-wand-refresh');
+    wandConnectRefreshLocked = true;
+    if (refreshButton) refreshButton.disabled = true;
+    setTimeout(() => {
+        wandConnectRefreshLocked = false;
+        const currentRefreshButton = document.getElementById('mcw-wand-refresh');
+        if (currentRefreshButton) currentRefreshButton.disabled = false;
+    }, 3000);
+}
+
+async function runWandAction (action) {
+    const actionUrl = window.MCW_FLUID_ACTION_URL;
+    if (!actionUrl) throw new Error('No wand action endpoint');
+    const response = await fetch(actionUrl, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || body.ok === false) {
+        throw new Error(body.error || `HTTP ${response.status}`);
+    }
+    updateWandConnectPanel(body.connected === true);
+    if (body.state) handleWandConnectionState(body.state);
+    return body;
+}
+
+function scheduleAutoTrackingStart () {
+    if (wandConnectAutoTrackingTimer) clearTimeout(wandConnectAutoTrackingTimer);
+    wandConnectAutoTrackingTimer = setTimeout(() => {
+        runWandAction('start_tracking').catch(() => {});
+    }, 2000);
+}
+
+function handleWandConnectionState (data) {
+    const connected = data && data.connected === true;
+    if (connected && wandConnectLastConnected !== true) {
+        scheduleAutoTrackingStart();
+    }
+    if (!connected && wandConnectAutoTrackingTimer) {
+        clearTimeout(wandConnectAutoTrackingTimer);
+        wandConnectAutoTrackingTimer = null;
+    }
+    wandConnectLastConnected = connected;
+    updateWandConnectPanel(connected);
+}
+
 function normalizeSpellKey (spell) {
     return String(spell || '')
         .toLowerCase()
@@ -658,6 +726,38 @@ function setupDrawSpellsToggle () {
     }
 }
 
+function setupWandConnectPanel () {
+    const tab = document.getElementById('mcw-wand-connect-tab');
+    const toggle = document.getElementById('mcw-wand-connect-toggle');
+    const refreshButton = document.getElementById('mcw-wand-refresh');
+    if (tab) {
+        tab.addEventListener('click', () => {
+            wandConnectPanelOpen = !wandConnectPanelOpen;
+            updateWandConnectPanel(wandConnectLastConnected === true);
+        });
+    }
+    if (toggle) {
+        toggle.addEventListener('change', () => {
+            toggle.disabled = true;
+            runWandAction(toggle.checked ? 'connect' : 'disconnect')
+                .catch(() => {
+                    toggle.checked = wandConnectLastConnected === true;
+                })
+                .finally(() => {
+                    toggle.disabled = false;
+                });
+        });
+    }
+    if (refreshButton) {
+        refreshButton.addEventListener('click', () => {
+            if (wandConnectRefreshLocked) return;
+            setWandRefreshLocked();
+            runWandAction('refresh_tracking').catch(() => {});
+        });
+    }
+    updateWandConnectPanel(false);
+}
+
 async function saveFluidConfig (action, keys) {
     const configUrl = window.MCW_FLUID_CONFIG_URL;
     if (!configUrl) return;
@@ -723,6 +823,7 @@ async function fetchFluidConfig () {
 applyHomeAssistantConfig();
 setupSpellGesturePanel();
 setupDrawSpellsToggle();
+setupWandConnectPanel();
 updateOverlayVisibility();
 
 let pointers = [];
@@ -2143,6 +2244,7 @@ function connectWandFluidStream () {
         if (data.fluid_config && !fluidControlsDirty && !fluidLiveUpdatePending) applyFluidConfig(data.fluid_config);
         wandConnected = data.connected === true;
         updateDrawSpellsDrawer(wandConnected);
+        handleWandConnectionState(data);
 
         const spellText = formatSpellName(data.spell);
         const spellEventId = Number(data.spell_event_id || 0);

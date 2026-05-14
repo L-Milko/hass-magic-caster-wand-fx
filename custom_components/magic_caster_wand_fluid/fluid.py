@@ -14,6 +14,7 @@ from typing import Any
 from aiohttp import web
 import numpy as np
 
+from homeassistant.components import bluetooth
 from homeassistant.components.http import HomeAssistantView, StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -44,6 +45,7 @@ DEFAULT_STATE_URL = f"/{DOMAIN}/fluid_state"
 STATE_URL = f"/{DOMAIN}/fluid_state/{{entry_id}}"
 CONFIG_URL = f"/{DOMAIN}/fluid_config/{{entry_id}}"
 SPELL_URL = f"/{DOMAIN}/fluid_spell/{{entry_id}}"
+ACTION_URL = f"/{DOMAIN}/fluid_action/{{entry_id}}"
 HEARTBEAT_INTERVAL = 10
 MOTION_ACTIVE_PIXELS = 2.0
 RAW_IMU_ACTIVE_THRESHOLD = 0.08
@@ -170,6 +172,7 @@ async def async_setup_fluid(
         hass.http.register_view(MagicCasterWandFluidStateView())
         hass.http.register_view(MagicCasterWandFluidConfigView())
         hass.http.register_view(MagicCasterWandFluidSpellView())
+        hass.http.register_view(MagicCasterWandFluidActionView())
         hass.data[DOMAIN]["_fluid_static_registered"] = True
 
     data["entry"] = entry
@@ -719,6 +722,7 @@ def _render_fluid_page(hass: HomeAssistant, entry_id: str) -> web.Response:
     html = html.replace("__MCW_STATE_URL__", json.dumps(STATE_URL.format(entry_id=entry_id)))
     html = html.replace("__MCW_CONFIG_URL__", json.dumps(CONFIG_URL.format(entry_id=entry_id)))
     html = html.replace("__MCW_SPELL_URL__", json.dumps(SPELL_URL.format(entry_id=entry_id)))
+    html = html.replace("__MCW_ACTION_URL__", json.dumps(ACTION_URL.format(entry_id=entry_id)))
     html = html.replace("__MCW_STATIC_URL__", STATIC_URL)
     html = html.replace(
         "__MCW_FLUID_GESTURES__",
@@ -943,6 +947,59 @@ class MagicCasterWandFluidSpellView(HomeAssistantView):
         )
 
 
+class MagicCasterWandFluidActionView(HomeAssistantView):
+    """Run wand connection and tracking actions from the fluid page."""
+
+    requires_auth = False
+    url = ACTION_URL
+    name = f"api:{DOMAIN}:fluid:action"
+
+    async def post(self, request: web.Request, entry_id: str) -> web.Response:
+        """Run a wand action."""
+        hass: HomeAssistant = request.app["hass"]
+        data = _get_entry_data(hass, entry_id)
+        if data is None:
+            return web.json_response(
+                {"ok": False, "error": "Unknown Magic Caster Wand entry"},
+                status=404,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"ok": False, "error": "Invalid JSON"}, status=400)
+
+        action = str(body.get("action", "")).strip().lower()
+        try:
+            if action == "connect":
+                await _async_fluid_connect_wand(hass, data)
+                _schedule_tracking_start(hass, data, delay=2.0)
+            elif action == "disconnect":
+                _cancel_tracking_task(data)
+                await data["mcw"].disconnect()
+                data["fluid_tracking_requested"] = False
+            elif action == "start_tracking":
+                _schedule_tracking_start(hass, data, delay=0.0)
+            elif action == "refresh_tracking":
+                _schedule_tracking_refresh(hass, data)
+            else:
+                return web.json_response({"ok": False, "error": "Unknown action"}, status=400)
+        except Exception as err:
+            _LOGGER.warning("Fluid wand action failed: %s", err)
+            return web.json_response({"ok": False, "error": str(err)}, status=500)
+
+        stream: MagicCasterWandMotionStream | None = data.get("fluid_stream")
+        payload = stream.state_payload() if stream is not None else {}
+        return web.json_response(
+            {
+                "ok": True,
+                "connected": data.get("connection_coordinator").data is True,
+                "tracking": bool(data.get("fluid_tracking_requested", False)),
+                "state": _json_safe(payload),
+            }
+        )
+
+
 async def _render_state(hass: HomeAssistant, entry_id: str) -> web.Response:
     """Return the latest browser-consumable wand state."""
     data = _get_entry_data(hass, entry_id)
@@ -962,6 +1019,7 @@ async def _render_state(hass: HomeAssistant, entry_id: str) -> web.Response:
     try:
         stream.ensure_imu_streaming()
         payload = stream.state_payload()
+        payload["tracking"] = bool(data.get("fluid_tracking_requested", False))
     except Exception as err:
         _LOGGER.exception("Fluid state endpoint failed")
         payload = stream.synthetic_motion_payload()
@@ -991,6 +1049,94 @@ def _get_entry_data(hass: HomeAssistant, entry_key: str) -> dict[str, Any] | Non
             return data
 
     return None
+
+
+async def _async_fluid_connect_wand(hass: HomeAssistant, data: dict[str, Any]) -> None:
+    """Connect the wand backing a fluid page."""
+    if data.get("draw_only"):
+        raise RuntimeError("This entry is draw-only and has no wand to connect")
+    address = data.get("address")
+    if not isinstance(address, str):
+        raise RuntimeError("Missing wand address")
+    ble_device = bluetooth.async_ble_device_from_address(hass, address)
+    if ble_device is None:
+        raise RuntimeError("Wand bluetooth device is not currently discoverable")
+    await data["mcw"].connect(ble_device)
+
+
+def _cancel_tracking_task(data: dict[str, Any]) -> None:
+    """Cancel a pending tracking helper task."""
+    task = data.get("fluid_tracking_task")
+    if task is not None and not task.done():
+        task.cancel()
+    data["fluid_tracking_task"] = None
+
+
+def _schedule_tracking_start(
+    hass: HomeAssistant,
+    data: dict[str, Any],
+    *,
+    delay: float,
+) -> None:
+    """Schedule spell tracking to start after connect settles."""
+    _cancel_tracking_task(data)
+    data["fluid_tracking_task"] = hass.async_create_task(
+        _async_start_tracking_after_delay(data, delay)
+    )
+
+
+def _schedule_tracking_refresh(hass: HomeAssistant, data: dict[str, Any]) -> None:
+    """Restart spell tracking after a short off period."""
+    now = monotonic()
+    if now - float(data.get("fluid_tracking_refresh_at", 0.0) or 0.0) < 3.0:
+        raise RuntimeError("Tracking refresh is cooling down")
+    data["fluid_tracking_refresh_at"] = now
+    _cancel_tracking_task(data)
+    data["fluid_tracking_task"] = hass.async_create_task(_async_refresh_tracking(data))
+
+
+async def _async_start_tracking_after_delay(data: dict[str, Any], delay: float) -> None:
+    """Start IMU tracking after a delay."""
+    try:
+        await asyncio.sleep(delay)
+        await _async_start_tracking(data)
+    except asyncio.CancelledError:
+        return
+
+
+async def _async_refresh_tracking(data: dict[str, Any]) -> None:
+    """Turn tracking off briefly, then back on."""
+    try:
+        await _async_stop_tracking(data)
+        await asyncio.sleep(2.0)
+        await _async_start_tracking(data)
+    except asyncio.CancelledError:
+        return
+
+
+async def _async_start_tracking(data: dict[str, Any]) -> None:
+    """Start spell tracking when the wand is connected."""
+    if data.get("connection_coordinator").data is not True:
+        return
+    mcw = data["mcw"]
+    await mcw.async_spell_tracker_init()
+    await mcw.imu_streaming_start()
+    data["fluid_tracking_requested"] = True
+    stream: MagicCasterWandMotionStream | None = data.get("fluid_stream")
+    if stream is not None:
+        stream.publish_config_update()
+
+
+async def _async_stop_tracking(data: dict[str, Any]) -> None:
+    """Stop spell tracking if the wand is connected."""
+    mcw = data["mcw"]
+    if data.get("connection_coordinator").data is True:
+        await mcw.imu_streaming_stop()
+        await mcw.async_spell_tracker_close()
+    data["fluid_tracking_requested"] = False
+    stream: MagicCasterWandMotionStream | None = data.get("fluid_stream")
+    if stream is not None:
+        stream.publish_config_update()
 
 
 def _get_first_entry_key(hass: HomeAssistant) -> str | None:

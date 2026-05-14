@@ -262,36 +262,49 @@
         text-transform: uppercase;
       }
 
-      .spell-book-tab {
+      .side-tool-rail {
         position: fixed;
-        right: 0;
+        left: 0;
         top: 50%;
         z-index: 2;
         display: grid;
-        gap: 5px;
+        gap: 6px;
+        transform: translateY(-50%);
+        transition: left 220ms ease, bottom 220ms ease;
+      }
+
+      body.gestures-open .side-tool-rail {
+        left: 232px;
+      }
+
+      .side-tool-button {
+        display: grid;
         place-items: center;
-        min-width: 34px;
-        min-height: 96px;
-        padding: 10px 7px;
+        width: 36px;
+        height: 42px;
+        padding: 0;
         color: rgba(255, 255, 255, 0.82);
         background: rgba(0, 0, 0, 0.72);
         border: 1px solid rgba(255, 255, 255, 0.18);
-        border-right: 0;
-        border-radius: 8px 0 0 8px;
+        border-left: 0;
+        border-radius: 0 8px 8px 0;
         box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
-        transform: translateY(-50%);
         transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease;
       }
 
-      .spell-book-tab span:last-child {
-        writing-mode: vertical-rl;
-        text-orientation: mixed;
-        font: 800 10px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        letter-spacing: 0;
-        text-transform: uppercase;
+      .side-tool-button:hover,
+      .side-tool-button.is-open {
+        color: #ffffff;
+        background: rgba(18, 22, 26, 0.92);
+        box-shadow: 0 8px 26px rgba(0, 0, 0, 0.38), 0 0 18px rgba(255, 255, 255, 0.14);
       }
 
-      .spell-book-tab-icon {
+      .wand-connect-tab.is-connected {
+        color: #9ee8ff;
+      }
+
+      .spell-book-tab-icon,
+      .wand-connect-tab-icon {
         position: relative;
         width: 17px;
         height: 17px;
@@ -300,34 +313,105 @@
       .spell-book-tab-icon::before {
         content: "";
         position: absolute;
-        left: 4px;
-        top: 9px;
-        width: 15px;
-        height: 3px;
+        left: 1px;
+        top: 2px;
+        width: 13px;
+        height: 12px;
         background: currentColor;
-        border-radius: 999px;
-        box-shadow: -3px 0 0 rgba(255, 255, 255, 0.3);
-        transform: rotate(-38deg);
-        transform-origin: left center;
+        border-radius: 2px;
+        box-shadow: inset -6px 0 0 rgba(0, 0, 0, 0.5), 2px 1px 0 rgba(255, 255, 255, 0.24);
       }
 
       .spell-book-tab-icon::after {
         content: "";
         position: absolute;
-        left: 1px;
-        top: 2px;
-        width: 6px;
-        height: 6px;
-        border: 1px solid currentColor;
-        border-radius: 50%;
-        box-shadow: 8px 1px 0 -2px currentColor, 4px 9px 0 -2px currentColor;
+        left: 7px;
+        top: 3px;
+        width: 1px;
+        height: 11px;
+        background: rgba(0, 0, 0, 0.5);
       }
 
-      .spell-book-tab:hover,
-      .spell-book-tab.is-open {
-        color: #ffffff;
-        background: rgba(18, 22, 26, 0.92);
-        box-shadow: 0 8px 26px rgba(0, 0, 0, 0.38), 0 0 18px rgba(255, 255, 255, 0.14);
+      .wand-connect-tab-icon::before {
+        content: "";
+        position: absolute;
+        left: 7px;
+        top: 1px;
+        width: 2px;
+        height: 15px;
+        background: currentColor;
+        border-radius: 999px;
+      }
+
+      .wand-connect-tab-icon::after {
+        content: "";
+        position: absolute;
+        left: 5px;
+        top: 2px;
+        width: 8px;
+        height: 12px;
+        border: 2px solid currentColor;
+        border-left: 0;
+        transform: skewY(-32deg);
+      }
+
+      .wand-connect-panel {
+        position: fixed;
+        left: 44px;
+        top: 50%;
+        z-index: 2;
+        display: grid;
+        gap: 9px;
+        width: 172px;
+        padding: 10px;
+        color: rgba(255, 255, 255, 0.88);
+        background: rgba(0, 0, 0, 0.78);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 8px;
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.34);
+        transform: translate(-130%, -50%);
+        transition: left 220ms ease, transform 220ms ease, opacity 180ms ease;
+        opacity: 0;
+        pointer-events: none;
+        font: 700 12px/1.35 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        text-transform: uppercase;
+      }
+
+      .wand-connect-panel.is-open {
+        transform: translate(0, -50%);
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      body.gestures-open .wand-connect-panel {
+        left: 276px;
+      }
+
+      .wand-connect-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .wand-connect-row input {
+        width: 16px;
+        height: 16px;
+        accent-color: #74ddff;
+      }
+
+      .wand-refresh-button {
+        min-height: 30px;
+        color: rgba(255, 255, 255, 0.86);
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 6px;
+        font: 800 11px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        text-transform: uppercase;
+      }
+
+      .wand-refresh-button:disabled {
+        opacity: 0.45;
       }
 
       .debug {
@@ -644,23 +728,41 @@
           line-height: 1.08;
         }
 
-        .spell-book-tab {
+        .side-tool-rail {
+          left: 10px;
           top: auto;
-          bottom: 46px;
-          min-height: 34px;
-          min-width: 78px;
+          bottom: 8px;
           grid-auto-flow: column;
-          grid-template-columns: auto auto;
-          padding: 7px 8px;
           transform: none;
         }
 
-        .spell-book-tab span:last-child {
-          writing-mode: horizontal-tb;
+        body.gestures-open .side-tool-rail {
+          left: 10px;
+          bottom: 180px;
         }
 
-        body.gestures-open .spell-book-tab {
-          bottom: 180px;
+        .side-tool-button {
+          width: 38px;
+          height: 34px;
+          border-left: 1px solid rgba(255, 255, 255, 0.18);
+          border-radius: 8px;
+        }
+
+        .wand-connect-panel,
+        body.gestures-open .wand-connect-panel {
+          left: 10px;
+          top: auto;
+          bottom: 50px;
+          width: min(176px, calc(100vw - 20px));
+          transform: translateY(130%);
+        }
+
+        .wand-connect-panel.is-open {
+          transform: translateY(0);
+        }
+
+        body.gestures-open .wand-connect-panel {
+          bottom: 222px;
         }
       }
 
@@ -686,6 +788,7 @@
       window.MCW_FLUID_STATE_URL = __MCW_STATE_URL__;
       window.MCW_FLUID_CONFIG_URL = __MCW_CONFIG_URL__;
       window.MCW_FLUID_SPELL_URL = __MCW_SPELL_URL__;
+      window.MCW_FLUID_ACTION_URL = __MCW_ACTION_URL__;
       window.MCW_FLUID_DEFAULT_STATE_URL = "/magic_caster_wand_fluid/fluid_state";
       window.MCW_FLUID_CONFIG = __MCW_FLUID_CONFIG__;
       window.MCW_FLUID_GESTURES = __MCW_FLUID_GESTURES__;
@@ -695,10 +798,21 @@
     <div class="status" id="mcw-fluid-status">READY</div>
     <div class="spell" id="mcw-fluid-spell"></div>
     <div class="debug" id="mcw-fluid-debug">WAITING FOR WAND DATA</div>
-    <button type="button" class="spell-book-tab" id="mcw-spell-book-tab" title="Open Spell Book">
-      <span class="spell-book-tab-icon" aria-hidden="true"></span>
-      <span>Book</span>
-    </button>
+    <div class="side-tool-rail" id="mcw-side-tool-rail">
+      <button type="button" class="side-tool-button spell-book-tab" id="mcw-spell-book-tab" title="Open Spell Book" aria-label="Open Spell Book">
+        <span class="spell-book-tab-icon" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="side-tool-button wand-connect-tab" id="mcw-wand-connect-tab" title="Wand Connection" aria-label="Wand Connection">
+        <span class="wand-connect-tab-icon" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="wand-connect-panel" id="mcw-wand-connect-panel" aria-label="Wand connection controls">
+      <label class="wand-connect-row" for="mcw-wand-connect-toggle">
+        <span>Connect</span>
+        <input type="checkbox" id="mcw-wand-connect-toggle">
+      </label>
+      <button type="button" class="wand-refresh-button" id="mcw-wand-refresh">Refresh Tracking</button>
+    </div>
     <div class="draw-spells-drawer" id="mcw-draw-spells-drawer">
       <button type="button" class="draw-spells-tab" id="mcw-draw-spells-tab" title="Show or hide Cast Spells">&lt;</button>
       <label class="draw-spells-toggle" for="mcw-draw-spells">
