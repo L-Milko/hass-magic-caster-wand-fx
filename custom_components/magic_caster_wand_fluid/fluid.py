@@ -192,10 +192,12 @@ async def async_setup_fluid(
         hass=hass,
         mcw=data["mcw"],
         imu_coordinator=data["imu_coordinator"],
+        battery_coordinator=data["battery_coordinator"],
         buttons_coordinator=data["buttons_coordinator"],
         spell_coordinator=data["spell_coordinator"],
         connection_coordinator=data["connection_coordinator"],
         fluid_config=data["fluid_config"],
+        runtime_data=data,
     )
     data["fluid_stream"] = stream
     stream.start()
@@ -220,19 +222,23 @@ class MagicCasterWandMotionStream:
         hass: HomeAssistant,
         mcw,
         imu_coordinator: DataUpdateCoordinator[list[dict[str, float]]],
+        battery_coordinator: DataUpdateCoordinator[float],
         buttons_coordinator: DataUpdateCoordinator[dict[str, bool]],
         spell_coordinator: DataUpdateCoordinator[str],
         connection_coordinator: DataUpdateCoordinator[bool],
         fluid_config: dict[str, Any],
+        runtime_data: dict[str, Any],
     ) -> None:
         """Initialize the motion stream."""
         self._hass = hass
         self._mcw = mcw
         self._imu_coordinator = imu_coordinator
+        self._battery_coordinator = battery_coordinator
         self._buttons_coordinator = buttons_coordinator
         self._spell_coordinator = spell_coordinator
         self._connection_coordinator = connection_coordinator
         self._fluid_config = fluid_config
+        self._runtime_data = runtime_data
         self._tracker = SpellTracker(detector=None)
         self._tracker.start()
         self._button_all = False
@@ -453,6 +459,9 @@ class MagicCasterWandMotionStream:
                     "button_all": self._button_all,
                     "button_combo": self._button_all,
                     "connected": self._connection_coordinator.data is True,
+                    "tracking": bool(self._runtime_data.get("fluid_tracking_requested", False)),
+                    "buttons": dict(self._buttons_coordinator.data or {}),
+                    "battery": self._battery_coordinator.data,
                     "has_motion": True,
                     "motion_pixels": max(round(raw_motion, 2), round(motion_pixels, 2)),
                     "source": "spell_tracker",
@@ -475,6 +484,9 @@ class MagicCasterWandMotionStream:
             "button_all": self._button_all,
             "button_combo": self._button_all,
             "connected": self._connection_coordinator.data is True,
+            "tracking": bool(self._runtime_data.get("fluid_tracking_requested", False)),
+            "buttons": dict(self._buttons_coordinator.data or {}),
+            "battery": self._battery_coordinator.data,
             "has_motion": (
                 self._last_motion_at is not None
                 and monotonic() - self._last_motion_at < HEARTBEAT_INTERVAL * 2
@@ -540,6 +552,8 @@ class MagicCasterWandMotionStream:
         """Request IMU streaming when the fluid page is being viewed."""
         now = monotonic()
         if self._connection_coordinator.data is not True:
+            return
+        if not self._runtime_data.get("fluid_tracking_requested", False):
             return
         if self._imu_start_task is not None and not self._imu_start_task.done():
             return
@@ -935,14 +949,17 @@ class MagicCasterWandFluidActionView(HomeAssistantView):
         action = str(body.get("action", "")).strip().lower()
         try:
             if action == "connect":
-                await _async_fluid_connect_wand(hass, data)
-                _schedule_tracking_start(hass, data, delay=2.0)
+                if await _async_fluid_connect_wand(hass, data):
+                    _schedule_tracking_start(hass, data, delay=2.0)
             elif action == "disconnect":
                 _cancel_tracking_task(data)
+                await _async_stop_tracking(data)
                 await data["mcw"].disconnect()
-                data["fluid_tracking_requested"] = False
             elif action == "start_tracking":
                 _schedule_tracking_start(hass, data, delay=0.0)
+            elif action == "stop_tracking":
+                _cancel_tracking_task(data)
+                await _async_stop_tracking(data)
             elif action == "refresh_tracking":
                 _schedule_tracking_refresh(hass, data)
             elif action == "calibrate_imu":
@@ -1022,7 +1039,7 @@ def _get_entry_data(hass: HomeAssistant, entry_key: str) -> dict[str, Any] | Non
     return None
 
 
-async def _async_fluid_connect_wand(hass: HomeAssistant, data: dict[str, Any]) -> None:
+async def _async_fluid_connect_wand(hass: HomeAssistant, data: dict[str, Any]) -> bool:
     """Connect the wand backing a fluid page."""
     if data.get("draw_only"):
         raise RuntimeError("This entry is draw-only and has no wand to connect")
@@ -1032,7 +1049,8 @@ async def _async_fluid_connect_wand(hass: HomeAssistant, data: dict[str, Any]) -
     ble_device = bluetooth.async_ble_device_from_address(hass, address)
     if ble_device is None:
         raise RuntimeError("Wand bluetooth device is not currently discoverable")
-    await data["mcw"].connect(ble_device)
+    connected = await data["mcw"].connect(ble_device)
+    return connected or data.get("connection_coordinator").data is True
 
 
 def _cancel_tracking_task(data: dict[str, Any]) -> None:
@@ -1093,6 +1111,7 @@ async def _async_start_tracking(data: dict[str, Any]) -> None:
     await mcw.async_spell_tracker_init()
     await mcw.imu_streaming_start()
     data["fluid_tracking_requested"] = True
+    _write_tracking_entity_state(data)
     stream: MagicCasterWandMotionStream | None = data.get("fluid_stream")
     if stream is not None:
         stream.publish_config_update()
@@ -1105,9 +1124,17 @@ async def _async_stop_tracking(data: dict[str, Any]) -> None:
         await mcw.imu_streaming_stop()
         await mcw.async_spell_tracker_close()
     data["fluid_tracking_requested"] = False
+    _write_tracking_entity_state(data)
     stream: MagicCasterWandMotionStream | None = data.get("fluid_stream")
     if stream is not None:
         stream.publish_config_update()
+
+
+def _write_tracking_entity_state(data: dict[str, Any]) -> None:
+    """Refresh the HA Spell Tracking switch after iframe actions."""
+    tracking_entity = data.get("spell_tracking_entity")
+    if tracking_entity is not None:
+        tracking_entity.async_write_ha_state()
 
 
 def _get_first_entry_key(hass: HomeAssistant) -> str | None:

@@ -207,6 +207,7 @@ let wandConnectAutoTrackingTimer = null;
 let wandConnectLastConnected = null;
 let wandConnectLoadingTimer = null;
 let wandConnectLoading = false;
+let wandConnectDesiredState = null;
 let wandTrackingOn = false;
 let wandBatteryLevel = null;
 let wandButtonStates = {};
@@ -570,10 +571,19 @@ function updateWandConnectPanel (connected) {
     const panel = document.getElementById('mcw-wand-connect-panel');
     const tab = document.getElementById('mcw-wand-connect-tab');
     const toggle = document.getElementById('mcw-wand-connect-toggle');
+    const pill = document.getElementById('mcw-wand-connect-pill');
     const loader = document.getElementById('mcw-wand-connect-loader');
     const trackingDot = document.getElementById('mcw-wand-tracking-dot');
+    const trackingLabel = document.getElementById('mcw-wand-tracking-label');
     const batteryEl = document.getElementById('mcw-wand-battery');
     const refreshButton = document.getElementById('mcw-wand-refresh');
+    const desiredChecked = wandConnectLoading && wandConnectDesiredState !== null ? wandConnectDesiredState : connected === true;
+    if (connected === true && wandConnectLoading) {
+        if (wandConnectLoadingTimer) clearTimeout(wandConnectLoadingTimer);
+        wandConnectLoadingTimer = null;
+        wandConnectLoading = false;
+        wandConnectDesiredState = null;
+    }
     if (panel) {
         panel.classList.toggle('is-open', wandConnectPanelOpen);
         panel.classList.toggle('is-connected', connected === true);
@@ -583,28 +593,35 @@ function updateWandConnectPanel (connected) {
         tab.classList.toggle('is-connected', connected === true);
         tab.title = connected === true ? 'Wand Connected' : 'Wand Connection';
     }
+    if (pill) {
+        pill.classList.toggle('is-on', desiredChecked);
+        pill.classList.toggle('is-loading', wandConnectLoading);
+    }
     if (loader) loader.hidden = !wandConnectLoading;
     if (trackingDot) trackingDot.classList.toggle('is-on', connected === true && wandTrackingOn === true);
+    if (trackingLabel) trackingLabel.textContent = connected === true && wandTrackingOn === true ? 'On' : 'Off';
     if (batteryEl) batteryEl.textContent = `Battery ${Number.isFinite(Number(wandBatteryLevel)) ? Math.round(Number(wandBatteryLevel)) + '%' : '--%'}`;
     if (refreshButton) refreshButton.disabled = wandConnectRefreshLocked || connected !== true;
     document.querySelectorAll('[data-wand-button]').forEach(el => {
         const buttonKey = el.dataset.wandButton;
         el.classList.toggle('is-on', wandButtonStates && wandButtonStates[buttonKey] === true);
     });
-    if (toggle && toggle.checked !== (connected === true)) {
-        toggle.checked = connected === true;
+    if (toggle && toggle.checked !== desiredChecked) {
+        toggle.checked = desiredChecked;
     }
 }
 
-function setWandConnectLoading (loading) {
+function setWandConnectLoading (loading, desiredState = null) {
     if (wandConnectLoadingTimer) {
         clearTimeout(wandConnectLoadingTimer);
         wandConnectLoadingTimer = null;
     }
     wandConnectLoading = loading === true;
+    wandConnectDesiredState = wandConnectLoading ? desiredState : null;
     if (wandConnectLoading) {
         wandConnectLoadingTimer = setTimeout(() => {
             wandConnectLoading = false;
+            wandConnectDesiredState = null;
             updateWandConnectPanel(wandConnectLastConnected === true);
         }, 6500);
     }
@@ -635,7 +652,6 @@ async function runWandAction (action) {
     if (!response.ok || body.ok === false) {
         throw new Error(body.error || `HTTP ${response.status}`);
     }
-    updateWandConnectPanel(body.connected === true);
     handleWandConnectionState({ ...(body.state || {}), ...body });
     return body;
 }
@@ -811,14 +827,16 @@ function setupWandConnectPanel () {
     }
     if (toggle) {
         toggle.addEventListener('change', () => {
+            const desiredConnected = toggle.checked === true;
             toggle.disabled = true;
-            setWandConnectLoading(toggle.checked);
-            runWandAction(toggle.checked ? 'connect' : 'disconnect')
+            setWandConnectLoading(desiredConnected, desiredConnected);
+            runWandAction(desiredConnected ? 'connect' : 'disconnect')
                 .catch(() => {
+                    setWandConnectLoading(false);
                     toggle.checked = wandConnectLastConnected === true;
                 })
                 .finally(() => {
-                    setWandConnectLoading(false);
+                    if (!desiredConnected) setWandConnectLoading(false);
                     toggle.disabled = false;
                 });
         });

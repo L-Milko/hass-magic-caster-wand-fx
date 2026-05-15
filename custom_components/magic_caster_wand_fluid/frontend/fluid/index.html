@@ -352,10 +352,68 @@
         gap: 10px;
       }
 
-      .wand-connect-row input {
-        width: 16px;
-        height: 16px;
-        accent-color: #74ddff;
+      .wand-connect-pill {
+        position: relative;
+        min-height: 34px;
+        padding: 4px 6px 4px 10px;
+        color: rgba(255, 255, 255, 0.76);
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 999px;
+        cursor: pointer;
+        transition: color 180ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+      }
+
+      .wand-connect-pill.is-on {
+        color: #dff8ff;
+        background: rgba(116, 221, 255, 0.16);
+        border-color: rgba(116, 221, 255, 0.45);
+        box-shadow: 0 0 18px rgba(116, 221, 255, 0.14);
+      }
+
+      .wand-connect-pill.is-loading {
+        border-color: rgba(255, 216, 80, 0.5);
+      }
+
+      .wand-connect-pill input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .wand-connect-switch {
+        position: relative;
+        flex: 0 0 auto;
+        width: 44px;
+        height: 24px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+        transition: background 180ms ease, box-shadow 180ms ease;
+      }
+
+      .wand-connect-switch::before {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        transition: transform 180ms ease, background 180ms ease;
+      }
+
+      .wand-connect-pill.is-on .wand-connect-switch {
+        background: rgba(85, 219, 119, 0.46);
+        box-shadow: inset 0 0 0 1px rgba(150, 255, 180, 0.32);
+      }
+
+      .wand-connect-pill.is-on .wand-connect-switch::before {
+        transform: translateX(20px);
+        background: #ffffff;
       }
 
       .wand-connect-status {
@@ -383,6 +441,7 @@
       .wand-connect-loader {
         width: 12px;
         height: 12px;
+        flex: 0 0 auto;
         border: 2px solid rgba(255, 255, 255, 0.22);
         border-top-color: rgba(116, 221, 255, 0.95);
         border-radius: 50%;
@@ -457,8 +516,9 @@
 
       .wand-button-sensor.is-on {
         color: #dfffe6;
-        border-color: rgba(85, 219, 119, 0.46);
-        box-shadow: inset 0 0 0 999px rgba(85, 219, 119, 0.12);
+        background: rgba(85, 219, 119, 0.26);
+        border-color: rgba(85, 219, 119, 0.76);
+        box-shadow: 0 0 14px rgba(85, 219, 119, 0.26), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
       }
 
       .debug {
@@ -853,20 +913,22 @@
     <div class="debug" id="mcw-fluid-debug">WAITING FOR WAND DATA</div>
     <div class="side-tool-rail" id="mcw-side-tool-rail">
       <button type="button" class="side-tool-button spell-book-tab" id="mcw-spell-book-tab" title="Open Spell Book" aria-label="Open Spell Book">
-        <span class="side-tool-symbol" aria-hidden="true">🕮</span>
+        <span class="side-tool-symbol" aria-hidden="true">&#128366;</span>
       </button>
       <button type="button" class="side-tool-button wand-connect-tab" id="mcw-wand-connect-tab" title="Wand Connection" aria-label="Wand Connection">
-        <span class="side-tool-symbol" aria-hidden="true">ᛒ</span>
+        <span class="side-tool-symbol" aria-hidden="true">&#5842;</span>
       </button>
     </div>
     <div class="wand-connect-panel" id="mcw-wand-connect-panel" aria-label="Wand connection controls">
-      <label class="wand-connect-row" for="mcw-wand-connect-toggle">
+      <label class="wand-connect-row wand-connect-pill" id="mcw-wand-connect-pill" for="mcw-wand-connect-toggle">
         <span>Connect</span>
         <span class="wand-connect-loader" id="mcw-wand-connect-loader" hidden></span>
         <input type="checkbox" id="mcw-wand-connect-toggle">
+        <span class="wand-connect-switch" aria-hidden="true"></span>
       </label>
       <div class="wand-connect-status">
         <span>Spell Tracking</span>
+        <span id="mcw-wand-tracking-label">Off</span>
         <span class="wand-connect-dot" id="mcw-wand-tracking-dot"></span>
       </div>
       <button type="button" class="wand-refresh-button" id="mcw-wand-refresh">Refresh Tracking</button>

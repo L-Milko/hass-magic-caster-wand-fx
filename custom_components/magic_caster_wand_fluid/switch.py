@@ -32,8 +32,8 @@ async def async_setup_entry(
     connection_coordinator = data["connection_coordinator"]
 
     entities = [
-        McwConnectionSwitch(hass, address, mcw, connection_coordinator),
-        McwSpellTrackingSwitch(hass, address, mcw, connection_coordinator),
+        McwConnectionSwitch(hass, address, mcw, connection_coordinator, data),
+        McwSpellTrackingSwitch(hass, address, mcw, connection_coordinator, data),
     ]
     if not data.get("draw_only", False):
         entities.extend(
@@ -81,15 +81,18 @@ class McwConnectionSwitch(CoordinatorEntity, SwitchEntity):
         address: str, 
         mcw, 
         connection_coordinator: DataUpdateCoordinator[bool],
+        data: dict,
     ) -> None:
         """Initialize the connection switch."""
         super().__init__(connection_coordinator)
         self._hass = hass
         self._address = address
         self._mcw = mcw
+        self._data = data
         self._identifier = address.replace(":", "")[-8:]
         self._attr_name = "Connect"
         self._attr_unique_id = f"mcwf_{self._identifier}_connect"
+        self._data["connect_entity"] = self
 
     @property
     def available(self) -> bool:
@@ -120,11 +123,17 @@ class McwConnectionSwitch(CoordinatorEntity, SwitchEntity):
         """Connect to the device."""
         ble_device = bluetooth.async_ble_device_from_address(self._hass, self._address)
         if ble_device and self._mcw:
-            await self._mcw.connect(ble_device)
+            connected = await self._mcw.connect(ble_device)
+            if not connected:
+                _LOGGER.warning("Magic Caster Wand did not connect from Connect switch")
 
     async def async_turn_off(self, **kwargs) -> None:
         """Disconnect from the device."""
         if self._mcw:
+            self._data["fluid_tracking_requested"] = False
+            tracking_entity = self._data.get("spell_tracking_entity")
+            if tracking_entity is not None:
+                tracking_entity.async_write_ha_state()
             await self._mcw.disconnect()
 
 
@@ -139,16 +148,19 @@ class McwSpellTrackingSwitch(CoordinatorEntity, SwitchEntity):
         address: str, 
         mcw, 
         connection_coordinator: DataUpdateCoordinator[bool],
+        data: dict,
     ) -> None:
         """Initialize the spell tracking switch."""
         super().__init__(connection_coordinator)
         self._hass = hass
         self._address = address
         self._mcw = mcw
+        self._data = data
         self._identifier = address.replace(":", "")[-8:]
         self._attr_name = "Spell Tracking"
         self._attr_unique_id = f"mcwf_{self._identifier}_spell_tracking"
-        self._is_on = False
+        self._data.setdefault("fluid_tracking_requested", False)
+        self._data["spell_tracking_entity"] = self
 
     @property
     def available(self) -> bool:
@@ -169,7 +181,7 @@ class McwSpellTrackingSwitch(CoordinatorEntity, SwitchEntity):
         """Return true if IMU streaming is active."""
         if self.coordinator.data is not True:
             return False
-        return self._is_on
+        return bool(self._data.get("fluid_tracking_requested", False))
 
     @property
     def icon(self) -> str:
@@ -181,7 +193,10 @@ class McwSpellTrackingSwitch(CoordinatorEntity, SwitchEntity):
         if self._mcw and self.coordinator.data is True:
             await self._mcw.async_spell_tracker_init()
             await self._mcw.imu_streaming_start()
-            self._is_on = True
+            self._data["fluid_tracking_requested"] = True
+            stream = self._data.get("fluid_stream")
+            if stream is not None:
+                stream.publish_config_update()
             async_dispatcher_send(self._hass, SIGNAL_SPELL_MODE_CHANGED)
             self.async_write_ha_state()
         elif self.coordinator.data is not True:
@@ -193,7 +208,10 @@ class McwSpellTrackingSwitch(CoordinatorEntity, SwitchEntity):
             if self.coordinator.data is True:
                 await self._mcw.imu_streaming_stop()
                 await self._mcw.async_spell_tracker_close()
-            self._is_on = False
+            self._data["fluid_tracking_requested"] = False
+            stream = self._data.get("fluid_stream")
+            if stream is not None:
+                stream.publish_config_update()
             async_dispatcher_send(self._hass, SIGNAL_SPELL_MODE_CHANGED)
             self.async_write_ha_state()
 
