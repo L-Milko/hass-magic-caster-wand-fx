@@ -729,8 +729,16 @@ async function playSpellPathPreview (gesture) {
 
 async function getSpellPathPoints (pathUrl) {
     if (spellPathCache.has(pathUrl)) return spellPathCache.get(pathUrl);
-    const image = await loadSpellPathImage(pathUrl);
-    const points = sampleSpellPathImage(image);
+    const cleanUrl = pathUrl.split('?')[0].toLowerCase();
+    let points = [];
+    if (cleanUrl.endsWith('.dxf')) {
+        const response = await fetch(pathUrl, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`Unable to load spell path ${response.status}`);
+        points = sampleSpellPathDxf(await response.text());
+    } else {
+        const image = await loadSpellPathImage(pathUrl);
+        points = sampleSpellPathImage(image);
+    }
     spellPathCache.set(pathUrl, points);
     return points;
 }
@@ -778,6 +786,116 @@ function sampleSpellPathImage (image) {
         x: 0.5 + ((point.x - (minX + maxX) / 2) / span) * 0.52,
         y: 0.5 + ((point.y - (minY + maxY) / 2) / span) * 0.52
     }));
+}
+
+function sampleSpellPathDxf (dxfText) {
+    const spline = parseFirstDxfSpline(dxfText);
+    if (!spline || spline.controlPoints.length < 2) return [];
+
+    const raw = sampleDxfSpline(spline, 180);
+    const xs = raw.map(point => point.x);
+    const ys = raw.map(point => point.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const span = Math.max(maxX - minX, maxY - minY, 1);
+
+    return resamplePathPoints(raw, 112).map(point => ({
+        x: 0.5 + ((point.x - (minX + maxX) / 2) / span) * 0.52,
+        y: 0.5 - ((point.y - (minY + maxY) / 2) / span) * 0.52
+    }));
+}
+
+function parseFirstDxfSpline (dxfText) {
+    const lines = dxfText.split(/\r?\n/).map(line => line.trim());
+    let inSpline = false;
+    let degree = 3;
+    const knots = [];
+    const controlPoints = [];
+    let pendingPoint = null;
+
+    for (let index = 0; index < lines.length - 1; index += 2) {
+        const code = lines[index];
+        const value = lines[index + 1];
+        if (code === '0') {
+            if (inSpline && value !== 'SPLINE') break;
+            inSpline = value === 'SPLINE';
+            continue;
+        }
+        if (!inSpline) continue;
+
+        if (code === '71') {
+            degree = parseInt(value, 10) || degree;
+        } else if (code === '40') {
+            knots.push(parseFloat(value));
+        } else if (code === '10') {
+            pendingPoint = { x: parseFloat(value), y: 0 };
+            controlPoints.push(pendingPoint);
+        } else if (code === '20' && pendingPoint) {
+            pendingPoint.y = parseFloat(value);
+        }
+    }
+
+    return { degree, knots, controlPoints: controlPoints.filter(point => Number.isFinite(point.x) && Number.isFinite(point.y)) };
+}
+
+function sampleDxfSpline (spline, count) {
+    const degree = Math.min(Math.max(spline.degree || 3, 1), spline.controlPoints.length - 1);
+    const knots = spline.knots.filter(Number.isFinite);
+    if (knots.length < spline.controlPoints.length + degree + 1) {
+        return sampleControlPointCurve(spline.controlPoints, count);
+    }
+
+    const start = knots[degree];
+    const end = knots[knots.length - degree - 1];
+    const points = [];
+    for (let index = 0; index < count; index++) {
+        const ratio = index / (count - 1);
+        const t = start + (end - start) * ratio;
+        points.push(evaluateDxfSplinePoint(spline.controlPoints, knots, degree, index === count - 1 ? end - 1e-9 : t));
+    }
+    return points;
+}
+
+function evaluateDxfSplinePoint (controlPoints, knots, degree, t) {
+    const lastControlIndex = controlPoints.length - 1;
+    let span = degree;
+    while (span < lastControlIndex && t >= knots[span + 1]) span++;
+
+    const working = [];
+    for (let index = 0; index <= degree; index++) {
+        const point = controlPoints[span - degree + index];
+        working.push({ x: point.x, y: point.y });
+    }
+
+    for (let level = 1; level <= degree; level++) {
+        for (let index = degree; index >= level; index--) {
+            const knotLeft = knots[span - degree + index];
+            const knotRight = knots[span + index - level + 1];
+            const ratio = knotRight === knotLeft ? 0 : (t - knotLeft) / (knotRight - knotLeft);
+            working[index].x = (1 - ratio) * working[index - 1].x + ratio * working[index].x;
+            working[index].y = (1 - ratio) * working[index - 1].y + ratio * working[index].y;
+        }
+    }
+    return working[degree];
+}
+
+function sampleControlPointCurve (controlPoints, count) {
+    const points = [];
+    for (let index = 0; index < count; index++) {
+        const exact = (index / (count - 1)) * (controlPoints.length - 1);
+        const leftIndex = Math.floor(exact);
+        const rightIndex = Math.min(controlPoints.length - 1, leftIndex + 1);
+        const ratio = exact - leftIndex;
+        const left = controlPoints[leftIndex];
+        const right = controlPoints[rightIndex];
+        points.push({
+            x: left.x + (right.x - left.x) * ratio,
+            y: left.y + (right.y - left.y) * ratio
+        });
+    }
+    return points;
 }
 
 function orderPathPoints (points) {

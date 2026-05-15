@@ -1182,13 +1182,20 @@ def _build_gesture_config() -> list[dict[str, str | None]]:
         if spell_key in SPELL_BOOK_HIDDEN:
             continue
         image_path = image_paths.get(spell_key)
-        path_image = SPELL_PATHS_PATH / f"{spell_key}_path.png"
+        path_file = next(
+            (
+                SPELL_PATHS_PATH / f"{spell_key}_path{suffix}"
+                for suffix in (".dxf", ".svg", ".png")
+                if (SPELL_PATHS_PATH / f"{spell_key}_path{suffix}").exists()
+            ),
+            None,
+        )
         gestures.append(
             {
                 "key": spell_key,
                 "title": _format_spell_title(spell_key),
                 "url": f"{GESTURES_STATIC_URL}/{image_path.name}" if image_path else None,
-                "path_url": f"{STATIC_URL}/spell_paths/{path_image.name}" if path_image.exists() else None,
+                "path_url": f"{STATIC_URL}/spell_paths/{path_file.name}" if path_file else None,
             }
         )
     return gestures
