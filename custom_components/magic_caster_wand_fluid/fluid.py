@@ -963,9 +963,9 @@ class MagicCasterWandFluidActionView(HomeAssistantView):
             elif action == "refresh_tracking":
                 _schedule_tracking_refresh(hass, data)
             elif action == "calibrate_imu":
-                await data["mcw"].send_imu_calibration()
+                await _async_press_calibration(data, "imu_calibration_entity", "send_imu_calibration")
             elif action == "calibrate_button":
-                await data["mcw"].send_button_calibration()
+                await _async_press_calibration(data, "button_calibration_entity", "send_button_calibration")
             else:
                 return web.json_response({"ok": False, "error": "Unknown action"}, status=400)
         except Exception as err:
@@ -1128,6 +1128,21 @@ async def _async_stop_tracking(data: dict[str, Any]) -> None:
     stream: MagicCasterWandMotionStream | None = data.get("fluid_stream")
     if stream is not None:
         stream.publish_config_update()
+
+
+async def _async_press_calibration(
+    data: dict[str, Any],
+    entity_key: str,
+    fallback_method: str,
+) -> None:
+    """Press the same HA calibration button entity used by device Controls."""
+    entity = data.get(entity_key)
+    if entity is not None:
+        await entity.async_press()
+        return
+
+    method = getattr(data["mcw"], fallback_method)
+    await method()
 
 
 def _write_tracking_entity_state(data: dict[str, Any]) -> None:

@@ -221,6 +221,10 @@ class McwDevice:
 
         lights_enabled = self._spell_light_effects_enabled
         vibration_enabled = self._spell_vibration_enabled
+        is_avada = name.lower().replace(" ", "_").replace("-", "_") == "avada_kedavra"
+        if is_avada:
+            lights_enabled = True
+            vibration_enabled = True
         if not lights_enabled and not vibration_enabled:
             return
 
@@ -271,8 +275,75 @@ class McwDevice:
                 .add_delay(360)
                 .add_clear()
             )
+        if name == "avada_kedavra":
+            return self._avada_kedavra_macro()
 
         return self._success_macro(color, include_vibration)
+
+    def _avada_kedavra_macro(self) -> Macro:
+        """Build a vivid green killing-curse feedback that always vibrates."""
+        return (
+            Macro()
+            .add_buzz(360)
+            .add_led_hex(LedGroup.POMMEL, "003300", 90)
+            .add_delay(45)
+            .add_led_hex(LedGroup.MID_LOWER, "007700", 110)
+            .add_delay(45)
+            .add_led_hex(LedGroup.MID_UPPER, "00CC22", 130)
+            .add_delay(45)
+            .add_led_hex(LedGroup.TIP, "66FF33", 150)
+            .add_delay(110)
+            .add_buzz(220)
+            .add_led_hex(LedGroup.POMMEL, "00AA00", 150)
+            .add_led_hex(LedGroup.MID_LOWER, "00DD11", 150)
+            .add_led_hex(LedGroup.MID_UPPER, "33FF22", 150)
+            .add_led_hex(LedGroup.TIP, "AAFF66", 150)
+            .add_delay(220)
+            .add_led_hex(LedGroup.POMMEL, "004400", 260)
+            .add_led_hex(LedGroup.MID_LOWER, "006600", 260)
+            .add_led_hex(LedGroup.MID_UPPER, "008800", 260)
+            .add_led_hex(LedGroup.TIP, "00FF00", 260)
+            .add_delay(260)
+            .add_led(LedGroup.POMMEL, 0, 0, 0, 520)
+            .add_led(LedGroup.MID_LOWER, 0, 0, 0, 520)
+            .add_led(LedGroup.MID_UPPER, 0, 0, 0, 520)
+            .add_led(LedGroup.TIP, 0, 0, 0, 520)
+            .add_delay(520)
+            .add_clear()
+        )
+
+    def _connected_macro(self) -> Macro:
+        """Build a green travelling connection animation."""
+        return (
+            Macro()
+            .add_led_hex(LedGroup.POMMEL, "003A12", 120)
+            .add_delay(60)
+            .add_led_hex(LedGroup.MID_LOWER, "007A28", 140)
+            .add_delay(60)
+            .add_led_hex(LedGroup.MID_UPPER, "00C848", 160)
+            .add_delay(60)
+            .add_led_hex(LedGroup.TIP, "66FF88", 180)
+            .add_delay(180)
+            .add_led_hex(LedGroup.POMMEL, "00220A", 260)
+            .add_led_hex(LedGroup.MID_LOWER, "003C14", 260)
+            .add_led_hex(LedGroup.MID_UPPER, "005C22", 260)
+            .add_led_hex(LedGroup.TIP, "009933", 260)
+            .add_delay(260)
+            .add_led(LedGroup.POMMEL, 0, 0, 0, 420)
+            .add_led(LedGroup.MID_LOWER, 0, 0, 0, 420)
+            .add_led(LedGroup.MID_UPPER, 0, 0, 0, 420)
+            .add_led(LedGroup.TIP, 0, 0, 0, 420)
+            .add_delay(420)
+            .add_clear()
+        )
+
+    async def _play_connected_feedback(self) -> None:
+        """Play a short connected animation when the wand connects."""
+        if self.is_connected() and self._mcw:
+            try:
+                await self._mcw.send_macro(self._connected_macro())
+            except Exception as err:
+                _LOGGER.debug("Failed to play connected animation: %s", err)
 
     def _success_macro(self, color: tuple[int, int, int], include_vibration: bool) -> Macro:
         """Build a visible travelling, pulsing success animation."""
@@ -572,6 +643,7 @@ class McwDevice:
             _LOGGER.debug("Connected to Magic Caster Wand: %s, %s", ble_device.address, self.model)
             if self._coordinator_connection:
                 self._coordinator_connection.async_set_updated_data(True)
+            await self._play_connected_feedback()
             return True
 
         except Exception as err:

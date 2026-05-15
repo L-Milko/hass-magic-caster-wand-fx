@@ -29,8 +29,8 @@ async def async_setup_entry(
     connection_coordinator = data["connection_coordinator"]
 
     async_add_entities([
-        McwButtonCalibration(address, mcw, coordinator, calibration_coordinator, connection_coordinator),
-        McwImuCalibration(address, mcw, coordinator, calibration_coordinator, connection_coordinator),
+        McwButtonCalibration(address, mcw, coordinator, calibration_coordinator, connection_coordinator, data),
+        McwImuCalibration(address, mcw, coordinator, calibration_coordinator, connection_coordinator, data),
     ])
 
 
@@ -46,6 +46,7 @@ class McwBaseCalibrationButton(CoordinatorEntity[DataUpdateCoordinator[BLEData]]
         coordinator: DataUpdateCoordinator[BLEData],
         calibration_coordinator: DataUpdateCoordinator[dict[str, str]],
         connection_coordinator: DataUpdateCoordinator[bool],
+        data: dict,
     ) -> None:
         """Initialize the calibration button."""
         super().__init__(coordinator)
@@ -54,6 +55,7 @@ class McwBaseCalibrationButton(CoordinatorEntity[DataUpdateCoordinator[BLEData]]
         self._identifier = address.replace(":", "")[-8:]
         self._calibration_coordinator = calibration_coordinator
         self._connection_coordinator = connection_coordinator
+        self._data = data
 
     async def async_added_to_hass(self) -> None:
         """Register connection coordinator listener."""
@@ -98,6 +100,7 @@ class McwButtonCalibration(McwBaseCalibrationButton):
         self._attr_name = "Calibration Button"
         self._attr_unique_id = f"mcwf_{self._identifier}_calibration_button"
         self._attr_icon = "mdi:gesture-tap-button"
+        self._data["button_calibration_entity"] = self
 
     async def async_press(self) -> None:
         """Handle the button press."""
@@ -116,6 +119,7 @@ class McwImuCalibration(McwBaseCalibrationButton):
         self._attr_name = "Calibration IMU"
         self._attr_unique_id = f"mcwf_{self._identifier}_calibration_imu"
         self._attr_icon = "mdi:compass-outline"
+        self._data["imu_calibration_entity"] = self
 
     async def async_press(self) -> None:
         """Handle the button press."""
