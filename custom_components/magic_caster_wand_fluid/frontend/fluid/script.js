@@ -219,7 +219,8 @@ const extraFluidSettings = {
     HIDE_WAND_CONNECT_TAB: false,
     PLAY_MODE: false,
     SHOW_SPELL_GESTURES: false,
-    AUTO_SCROLL_GESTURES: false
+    AUTO_SCROLL_GESTURES: false,
+    PREVIEW_DRAW_SPEED: 1
 };
 const fluidLocalSettingsKey = 'mcwFluidLocalSettings';
 const gestureCards = new Map();
@@ -249,6 +250,7 @@ function loadLocalFluidSettings () {
         if (saved.extraFluidSettings && typeof saved.extraFluidSettings === 'object') {
             Object.assign(extraFluidSettings, saved.extraFluidSettings);
         }
+        extraFluidSettings.PREVIEW_DRAW_SPEED = clampPreviewDrawSpeed(extraFluidSettings.PREVIEW_DRAW_SPEED);
         if (typeof saved.fluidControlsCollapsed === 'boolean') fluidControlsCollapsed = saved.fluidControlsCollapsed;
         if (typeof saved.drawSpellsDrawerCollapsed === 'boolean') drawSpellsDrawerCollapsed = saved.drawSpellsDrawerCollapsed;
         if (typeof saved.spellBookAlphabetical === 'boolean') spellBookAlphabetical = saved.spellBookAlphabetical;
@@ -268,6 +270,12 @@ function saveLocalFluidSettings () {
             playModePreviousState
         }));
     } catch (err) {}
+}
+
+function clampPreviewDrawSpeed (value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return 1;
+    return Math.min(2, Math.max(0.25, numeric));
 }
 
 loadLocalFluidSettings();
@@ -385,6 +393,23 @@ function createExtraFluidSettingsSection () {
     sectionEl.className = 'fluid-control-section fluid-section-extra';
     sectionEl.innerHTML = '<div class="fluid-control-section-title">Extra Settings</div>';
 
+    const speedRow = document.createElement('label');
+    speedRow.className = 'fluid-control-row';
+    const speedName = document.createElement('span');
+    speedName.textContent = 'Preview Draw Speed';
+    const speedValue = document.createElement('output');
+    speedValue.dataset.extraFluidValue = 'PREVIEW_DRAW_SPEED';
+    const speedInput = document.createElement('input');
+    speedInput.type = 'range';
+    speedInput.min = '0.25';
+    speedInput.max = '2';
+    speedInput.step = '0.05';
+    speedInput.dataset.extraFluidKey = 'PREVIEW_DRAW_SPEED';
+    speedRow.appendChild(speedName);
+    speedRow.appendChild(speedValue);
+    speedRow.appendChild(speedInput);
+    sectionEl.appendChild(speedRow);
+
     [
         ['SPELL_LIGHT_EFFECTS', 'Spell Light Effects'],
         ['SPELL_VIBRATION', 'Spell Vibration'],
@@ -404,10 +429,19 @@ function createExtraFluidSettingsSection () {
         sectionEl.appendChild(row);
     });
 
+    sectionEl.addEventListener('input', event => {
+        const input = event.target.closest('[data-extra-fluid-key="PREVIEW_DRAW_SPEED"]');
+        if (!input) return;
+        extraFluidSettings.PREVIEW_DRAW_SPEED = clampPreviewDrawSpeed(input.value);
+        saveLocalFluidSettings();
+        updateExtraFluidSettingsPanel();
+    });
+
     sectionEl.addEventListener('change', event => {
         const input = event.target.closest('[data-extra-fluid-key]');
         if (!input) return;
         const key = input.dataset.extraFluidKey;
+        if (key === 'PREVIEW_DRAW_SPEED') return;
         if (key === 'SPELL_LIGHT_EFFECTS' || key === 'SPELL_VIBRATION') {
             setSpellFeedbackEnabled(key, input.checked);
             return;
@@ -434,6 +468,8 @@ function createExtraFluidSettingsSection () {
 
 function updateExtraFluidSettingsPanel () {
     if (!fluidControlPanel) return;
+    const previewSpeedInput = fluidControlPanel.querySelector('[data-extra-fluid-key="PREVIEW_DRAW_SPEED"]');
+    const previewSpeedValue = fluidControlPanel.querySelector('[data-extra-fluid-value="PREVIEW_DRAW_SPEED"]');
     const hideSpellBookInput = fluidControlPanel.querySelector('[data-extra-fluid-key="HIDE_SPELL_BOOK_TAB"]');
     const hideWandConnectInput = fluidControlPanel.querySelector('[data-extra-fluid-key="HIDE_WAND_CONNECT_TAB"]');
     const hideTextInput = fluidControlPanel.querySelector('[data-extra-fluid-key="HIDE_WAND_TEXT"]');
@@ -441,6 +477,8 @@ function updateExtraFluidSettingsPanel () {
     const spellVibrationInput = fluidControlPanel.querySelector('[data-extra-fluid-key="SPELL_VIBRATION"]');
     if (spellLightsInput) spellLightsInput.checked = config.SPELL_LIGHT_EFFECTS === true;
     if (spellVibrationInput) spellVibrationInput.checked = config.SPELL_VIBRATION === true;
+    if (previewSpeedInput) previewSpeedInput.value = String(extraFluidSettings.PREVIEW_DRAW_SPEED);
+    if (previewSpeedValue) previewSpeedValue.textContent = `${extraFluidSettings.PREVIEW_DRAW_SPEED.toFixed(2)}x`;
     if (hideSpellBookInput) hideSpellBookInput.checked = extraFluidSettings.HIDE_SPELL_BOOK_TAB === true;
     if (hideWandConnectInput) hideWandConnectInput.checked = extraFluidSettings.HIDE_WAND_CONNECT_TAB === true;
     if (hideTextInput) hideTextInput.checked = extraFluidSettings.HIDE_WAND_TEXT === true;
@@ -1033,7 +1071,8 @@ function animateSpellPathPoints (points, runId) {
         const metrics = buildPathMetrics(points);
         const startTime = performance.now();
         const previewPixelsPerSecond = 340;
-        const duration = Math.max(750, Math.min(5200, 420 + (metrics.total / previewPixelsPerSecond) * 1000));
+        const previewSpeed = clampPreviewDrawSpeed(extraFluidSettings.PREVIEW_DRAW_SPEED);
+        const duration = Math.max(750, Math.min(7200, 420 + (metrics.total / (previewPixelsPerSecond * previewSpeed)) * 1000));
 
         const frame = now => {
             if (runId !== spellPathPreviewRun) {
