@@ -148,7 +148,7 @@
       .spell-gesture-header {
         flex: 0 0 auto;
         display: grid;
-        grid-template-columns: 1fr auto;
+        grid-template-columns: 1fr auto auto;
         gap: 8px;
         align-items: center;
         padding: 10px 10px 8px;
@@ -158,7 +158,10 @@
 
       .spell-gesture-title {
         color: #dff5ff;
-        background: linear-gradient(90deg, #ffffff 0%, #8ce8ff 35%, #d7b8ff 72%, #ffffff 100%);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: linear-gradient(90deg, #ffffff 0%, #d7b8ff 34%, #8ce8ff 72%, #ffffff 100%);
         -webkit-background-clip: text;
         background-clip: text;
         text-shadow: 0 0 16px rgba(116, 221, 255, 0.42), 0 0 26px rgba(190, 130, 255, 0.28);
@@ -166,6 +169,12 @@
         letter-spacing: 0;
         text-transform: uppercase;
         -webkit-text-fill-color: transparent;
+      }
+
+      .spell-gesture-title::before {
+        content: "\1F56E";
+        font-family: "Segoe UI Symbol", "Noto Sans Symbols", system-ui, sans-serif;
+        font-size: 16px;
       }
 
       .spell-gesture-sort {
@@ -189,10 +198,10 @@
 
       .spell-gesture-autoscroll {
         display: grid;
-        grid-column: 1 / -1;
-        grid-template-columns: 1fr auto;
+        grid-template-columns: auto auto;
         gap: 8px;
         align-items: center;
+        justify-self: end;
         color: rgba(255, 255, 255, 0.74);
         text-transform: uppercase;
       }
@@ -256,6 +265,24 @@
         border: 1px solid rgba(255, 255, 255, 0.12);
         border-radius: 6px;
         text-align: center;
+      }
+
+      .spell-gesture-card.has-path {
+        cursor: pointer;
+      }
+
+      .spell-gesture-card.has-path::after {
+        content: "Preview";
+        position: absolute;
+        right: 6px;
+        bottom: 6px;
+        padding: 2px 5px;
+        color: rgba(255, 255, 255, 0.7);
+        background: rgba(0, 0, 0, 0.42);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 4px;
+        font: 800 9px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        text-transform: uppercase;
       }
 
       .spell-gesture-card.is-recent {
@@ -984,9 +1011,9 @@
         body.gestures-open .wand-connect-panel {
           left: 10px;
           top: auto;
-          bottom: 50px;
-          width: min(176px, calc(100vw - 20px));
-          max-height: calc(100vh - 66px);
+          bottom: 56px;
+          width: min(198px, calc(100vw - 20px));
+          max-height: min(360px, calc(100dvh - 74px));
           transform: translateY(130%);
         }
 
@@ -995,8 +1022,8 @@
         }
 
         body.gestures-open .wand-connect-panel {
-          bottom: 274px;
-          max-height: calc(100vh - 290px);
+          bottom: 276px;
+          max-height: max(132px, calc(100dvh - 292px));
         }
       }
 
@@ -1096,21 +1123,21 @@
     <aside class="spell-gesture-panel" id="mcw-spell-gesture-panel" aria-label="Spell book">
       <div class="spell-gesture-header">
         <div class="spell-gesture-title">Spell Book</div>
-        <button type="button" class="spell-gesture-sort" id="mcw-spell-book-sort">A-Z</button>
-        <div class="spell-gesture-options">
-          <label class="spell-gesture-option" for="mcw-draw-spells">
-            <span>Cast</span>
-            <input type="checkbox" id="mcw-draw-spells">
-          </label>
-          <label class="spell-gesture-option" for="mcw-learn-spells">
-            <span>Learn</span>
-            <input type="checkbox" id="mcw-learn-spells">
-          </label>
-        </div>
         <label class="spell-gesture-autoscroll" for="mcw-gesture-autoscroll">
           <span>Auto Scroll</span>
           <input type="checkbox" id="mcw-gesture-autoscroll">
         </label>
+        <button type="button" class="spell-gesture-sort" id="mcw-spell-book-sort">A-Z</button>
+        <div class="spell-gesture-options">
+          <label class="spell-gesture-option" for="mcw-draw-spells" title="Cast mode recognizes mouse or touch gestures and updates the draw spell sensor for automations.">
+            <span>Cast</span>
+            <input type="checkbox" id="mcw-draw-spells">
+          </label>
+          <label class="spell-gesture-option" for="mcw-learn-spells" title="Learn mode lets you practice gestures without sending draw spell automation events.">
+            <span>Learn</span>
+            <input type="checkbox" id="mcw-learn-spells">
+          </label>
+        </div>
       </div>
       <div class="spell-gesture-list" id="mcw-spell-gesture-list"></div>
     </aside>

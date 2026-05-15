@@ -221,8 +221,12 @@ const extraFluidSettings = {
 };
 const fluidLocalSettingsKey = 'mcwFluidLocalSettings';
 const gestureCards = new Map();
+const spellPathCache = new Map();
 let spellBookGestures = [];
 let spellBookAlphabetical = false;
+let playModePreviousState = null;
+let spellPathPreviewPointer = null;
+let spellPathPreviewFrame = null;
 
 function loadLocalFluidSettings () {
     try {
@@ -233,6 +237,9 @@ function loadLocalFluidSettings () {
         if (typeof saved.fluidControlsCollapsed === 'boolean') fluidControlsCollapsed = saved.fluidControlsCollapsed;
         if (typeof saved.drawSpellsDrawerCollapsed === 'boolean') drawSpellsDrawerCollapsed = saved.drawSpellsDrawerCollapsed;
         if (typeof saved.spellBookAlphabetical === 'boolean') spellBookAlphabetical = saved.spellBookAlphabetical;
+        if (saved.playModePreviousState && typeof saved.playModePreviousState === 'object') {
+            playModePreviousState = saved.playModePreviousState;
+        }
     } catch (err) {}
 }
 
@@ -242,7 +249,8 @@ function saveLocalFluidSettings () {
             extraFluidSettings,
             fluidControlsCollapsed,
             drawSpellsDrawerCollapsed,
-            spellBookAlphabetical
+            spellBookAlphabetical,
+            playModePreviousState
         }));
     } catch (err) {}
 }
@@ -529,8 +537,15 @@ function renderSpellGestureList () {
         card.className = 'spell-gesture-card';
         card.dataset.spellKey = gesture.key;
         card.classList.toggle('is-missing-image', !gesture.url);
+        card.classList.toggle('has-path', Boolean(gesture.path_url));
         const gestureKey = normalizeSpellKey(gesture.key);
         card.classList.toggle('is-avada', gestureKey === 'avada_kedavra');
+        if (gesture.path_url) {
+            card.title = `Preview ${gesture.title || formatSpellName(gesture.key)} fluid path`;
+            card.addEventListener('click', () => {
+                playSpellPathPreview(gesture).catch(() => {});
+            });
+        }
         card.innerHTML = '<div class="spell-gesture-name"></div><div class="spell-gesture-media"></div>';
         card.querySelector('.spell-gesture-name').textContent = gesture.title || formatSpellName(gesture.key);
         const media = card.querySelector('.spell-gesture-media');
@@ -704,6 +719,157 @@ function highlightSpellGesture (spell) {
     }
 }
 
+async function playSpellPathPreview (gesture) {
+    if (!gesture || !gesture.path_url) return;
+    const points = await getSpellPathPoints(gesture.path_url);
+    if (!points.length) return;
+    highlightSpellGesture(gesture.key);
+    animateSpellPathPoints(points);
+}
+
+async function getSpellPathPoints (pathUrl) {
+    if (spellPathCache.has(pathUrl)) return spellPathCache.get(pathUrl);
+    const image = await loadSpellPathImage(pathUrl);
+    const points = sampleSpellPathImage(image);
+    spellPathCache.set(pathUrl, points);
+    return points;
+}
+
+function loadSpellPathImage (pathUrl) {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.crossOrigin = 'anonymous';
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = pathUrl;
+    });
+}
+
+function sampleSpellPathImage (image) {
+    const pathCanvas = document.createElement('canvas');
+    pathCanvas.width = image.naturalWidth || image.width;
+    pathCanvas.height = image.naturalHeight || image.height;
+    const ctx = pathCanvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return [];
+    ctx.drawImage(image, 0, 0);
+    const { width, height } = pathCanvas;
+    const data = ctx.getImageData(0, 0, width, height).data;
+    const raw = [];
+    const step = Math.max(2, Math.floor(Math.min(width, height) / 280));
+    for (let y = 0; y < height; y += step) {
+        for (let x = 0; x < width; x += step) {
+            const index = (y * width + x) * 4;
+            const alpha = data[index + 3];
+            const brightness = data[index] + data[index + 1] + data[index + 2];
+            if (alpha > 18 && brightness < 680) raw.push({ x, y });
+        }
+    }
+    if (raw.length < 6) return [];
+
+    const ordered = orderPathPoints(raw);
+    const xs = ordered.map(point => point.x);
+    const ys = ordered.map(point => point.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const span = Math.max(maxX - minX, maxY - minY, 1);
+    return resamplePathPoints(ordered, 96).map(point => ({
+        x: 0.5 + ((point.x - (minX + maxX) / 2) / span) * 0.52,
+        y: 0.5 + ((point.y - (minY + maxY) / 2) / span) * 0.52
+    }));
+}
+
+function orderPathPoints (points) {
+    const remaining = points.slice();
+    let startIndex = 0;
+    for (let index = 1; index < remaining.length; index++) {
+        if (remaining[index].x + remaining[index].y < remaining[startIndex].x + remaining[startIndex].y) {
+            startIndex = index;
+        }
+    }
+    const ordered = [remaining.splice(startIndex, 1)[0]];
+    while (remaining.length) {
+        const last = ordered[ordered.length - 1];
+        let nearestIndex = 0;
+        let nearestDistance = Infinity;
+        for (let index = 0; index < remaining.length; index++) {
+            const dx = remaining[index].x - last.x;
+            const dy = remaining[index].y - last.y;
+            const distance = dx * dx + dy * dy;
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestIndex = index;
+            }
+        }
+        ordered.push(remaining.splice(nearestIndex, 1)[0]);
+    }
+    return ordered;
+}
+
+function resamplePathPoints (points, count) {
+    if (points.length <= count) return points;
+    const cumulative = [0];
+    for (let index = 1; index < points.length; index++) {
+        cumulative.push(cumulative[index - 1] + Math.hypot(points[index].x - points[index - 1].x, points[index].y - points[index - 1].y));
+    }
+    const total = cumulative[cumulative.length - 1] || 1;
+    const sampled = [];
+    let segment = 1;
+    for (let index = 0; index < count; index++) {
+        const target = total * (index / (count - 1));
+        while (segment < cumulative.length - 1 && cumulative[segment] < target) segment++;
+        const previous = points[segment - 1];
+        const next = points[segment];
+        const span = cumulative[segment] - cumulative[segment - 1];
+        const ratio = span <= 0 ? 0 : (target - cumulative[segment - 1]) / span;
+        sampled.push({
+            x: previous.x + (next.x - previous.x) * ratio,
+            y: previous.y + (next.y - previous.y) * ratio
+        });
+    }
+    return sampled;
+}
+
+function animateSpellPathPoints (points) {
+    if (!points.length) return;
+    if (spellPathPreviewFrame) cancelAnimationFrame(spellPathPreviewFrame);
+    if (!spellPathPreviewPointer) {
+        spellPathPreviewPointer = new pointerPrototype();
+        pointers.push(spellPathPreviewPointer);
+    }
+
+    const pointer = spellPathPreviewPointer;
+    const first = points[0];
+    pointer.color = config.MATCH_LED_COLOR ? getConfiguredFluidColor() : generateColor();
+    updatePointerDownData(pointer, -7707, first.x * canvas.width, first.y * canvas.height);
+    const startTime = performance.now();
+    const duration = Math.max(900, Math.min(1900, points.length * 16));
+
+    const frame = now => {
+        const progress = Math.min(1, (now - startTime) / duration);
+        const exact = progress * (points.length - 1);
+        const index = Math.min(points.length - 2, Math.floor(exact));
+        const ratio = exact - index;
+        const current = points[index];
+        const next = points[index + 1] || current;
+        const x = current.x + (next.x - current.x) * ratio;
+        const y = current.y + (next.y - current.y) * ratio;
+        updatePointerMoveData(pointer, x * canvas.width, y * canvas.height);
+        if (pointer.moved) {
+            splatPointer(pointer);
+            pointer.moved = false;
+        }
+        if (progress < 1) {
+            spellPathPreviewFrame = requestAnimationFrame(frame);
+            return;
+        }
+        updatePointerUpData(pointer);
+        spellPathPreviewFrame = null;
+    };
+    spellPathPreviewFrame = requestAnimationFrame(frame);
+}
+
 function updateDrawSpellsToggle () {
     const drawSpellsInput = document.getElementById('mcw-draw-spells');
     const learnSpellsInput = document.getElementById('mcw-learn-spells');
@@ -743,14 +909,38 @@ function updateOverlayVisibility () {
 }
 
 function setPlayModeEnabled (enabled) {
-    extraFluidSettings.PLAY_MODE = enabled === true;
-    if (extraFluidSettings.PLAY_MODE) {
+    const nextEnabled = enabled === true;
+    const wasEnabled = extraFluidSettings.PLAY_MODE === true;
+    if (nextEnabled && !wasEnabled) {
+        playModePreviousState = {
+            drawSpells: config.DRAW_SPELLS === true,
+            learnSpells: config.LEARN_SPELLS === true,
+            showSpellGestures: extraFluidSettings.SHOW_SPELL_GESTURES === true,
+            wandConnectPanelOpen,
+            tracking: wandTrackingOn === true,
+            fluidControlsCollapsed
+        };
+    }
+
+    extraFluidSettings.PLAY_MODE = nextEnabled;
+    if (nextEnabled) {
         if (config.DRAW_SPELLS === true) setDrawSpellsEnabled(false);
         if (config.LEARN_SPELLS === true) setLearnSpellsEnabled(false);
         runWandAction('stop_tracking').catch(() => {});
         wandConnectPanelOpen = false;
         extraFluidSettings.SHOW_SPELL_GESTURES = false;
         fluidControlsCollapsed = true;
+    } else if (wasEnabled && playModePreviousState) {
+        const previous = playModePreviousState;
+        extraFluidSettings.SHOW_SPELL_GESTURES = previous.showSpellGestures === true;
+        wandConnectPanelOpen = previous.wandConnectPanelOpen === true;
+        fluidControlsCollapsed = previous.fluidControlsCollapsed === true;
+        if (previous.drawSpells === true) setDrawSpellsEnabled(true);
+        if (previous.learnSpells === true) setLearnSpellsEnabled(true);
+        if (previous.tracking === true && wandConnectLastConnected === true) {
+            runWandAction('start_tracking').catch(() => {});
+        }
+        playModePreviousState = null;
     }
     saveLocalFluidSettings();
     updateSpellGesturePanel();

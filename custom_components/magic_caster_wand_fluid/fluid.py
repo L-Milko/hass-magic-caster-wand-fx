@@ -36,6 +36,7 @@ CANVAS_WIDTH = 800
 CANVAS_HEIGHT = 600
 FRONTEND_PATH = Path(__file__).parent / "frontend" / "fluid"
 GESTURES_PATH = FRONTEND_PATH / "gestures"
+SPELL_PATHS_PATH = FRONTEND_PATH / "spell_paths"
 STATIC_URL = f"/{DOMAIN}_fluid"
 GESTURES_STATIC_URL = f"/{DOMAIN}_gestures"
 DEFAULT_PAGE_URL = f"/{DOMAIN}/fluid"
@@ -1181,11 +1182,13 @@ def _build_gesture_config() -> list[dict[str, str | None]]:
         if spell_key in SPELL_BOOK_HIDDEN:
             continue
         image_path = image_paths.get(spell_key)
+        path_image = SPELL_PATHS_PATH / f"{spell_key}_path.png"
         gestures.append(
             {
                 "key": spell_key,
                 "title": _format_spell_title(spell_key),
                 "url": f"{GESTURES_STATIC_URL}/{image_path.name}" if image_path else None,
+                "path_url": f"{STATIC_URL}/spell_paths/{path_image.name}" if path_image.exists() else None,
             }
         )
     return gestures
