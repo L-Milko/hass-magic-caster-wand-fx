@@ -993,25 +993,33 @@ class MagicCasterWandFluidActionView(HomeAssistantView):
             return web.json_response({"ok": False, "error": "Invalid JSON"}, status=400)
 
         action = str(body.get("action", "")).strip().lower()
+        action_message: str | None = None
         try:
             if action == "connect":
                 if await _async_fluid_connect_wand(hass, data):
                     _schedule_tracking_start(hass, data, delay=2.0)
+                    action_message = "Connect Done"
             elif action == "disconnect":
                 _cancel_tracking_task(data)
                 await _async_stop_tracking(data)
                 await data["mcw"].disconnect()
+                action_message = "Disconnect Done"
             elif action == "start_tracking":
                 _schedule_tracking_start(hass, data, delay=0.0)
+                action_message = "Tracking Starting"
             elif action == "stop_tracking":
                 _cancel_tracking_task(data)
                 await _async_stop_tracking(data)
+                action_message = "Tracking Stopped"
             elif action == "refresh_tracking":
                 _schedule_tracking_refresh(hass, data)
+                action_message = "Tracking Refreshing"
             elif action == "calibrate_imu":
                 await _async_press_calibration(data, "imu_calibration_entity", "send_imu_calibration")
+                action_message = "IMU Calibrated"
             elif action == "calibrate_button":
                 await _async_press_calibration(data, "button_calibration_entity", "send_button_calibration")
+                action_message = "Buttons Calibrated"
             else:
                 return web.json_response({"ok": False, "error": "Unknown action"}, status=400)
         except Exception as err:
@@ -1027,6 +1035,8 @@ class MagicCasterWandFluidActionView(HomeAssistantView):
                 "tracking": bool(data.get("fluid_tracking_requested", False)),
                 "battery": _json_safe(data.get("battery_coordinator").data),
                 "buttons": _json_safe(data.get("buttons_coordinator").data or {}),
+                "activity": action_message,
+                "result": "Done" if action_message else None,
                 "state": _json_safe(payload),
             }
         )
@@ -1169,6 +1179,11 @@ def _schedule_tracking_refresh(hass: HomeAssistant, data: dict[str, Any]) -> Non
         raise RuntimeError("Tracking refresh is cooling down")
     data["fluid_tracking_refresh_at"] = now
     _cancel_tracking_task(data)
+    data["fluid_tracking_requested"] = False
+    _write_tracking_entity_state(data)
+    stream: MagicCasterWandMotionStream | None = data.get("fluid_stream")
+    if stream is not None:
+        stream.publish_config_update()
     data["fluid_tracking_task"] = hass.async_create_task(_async_refresh_tracking(data))
 
 

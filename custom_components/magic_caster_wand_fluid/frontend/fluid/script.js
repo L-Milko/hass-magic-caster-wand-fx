@@ -291,7 +291,7 @@ function getWandImageUrl (wand, colorName = 'off') {
 }
 
 function getConnectWandImageUrl (wand, state) {
-    if (state && (state.connected === true || (state.loading === true && state.desiredConnected === true))) {
+    if (state && state.connected === true) {
         return getWandImageUrl(wand, wand && wand.casting_led_color);
     }
     return getWandImageUrl(wand, 'off');
@@ -318,7 +318,8 @@ function getWandRuntimeState (entryId) {
             buttons: {},
             spell: '',
             loading: false,
-            desiredConnected: null
+            desiredConnected: null,
+            actionFeedback: {}
         });
     }
     return wandRuntimeStates.get(key);
@@ -891,7 +892,7 @@ function renderWandConnectList () {
         card.querySelector('.wand-connect-card-type').textContent = wand.type || 'Wand';
         const button = card.querySelector('button');
         const desiredOn = state.loading && state.desiredConnected !== null ? state.desiredConnected : state.connected === true;
-        button.querySelector('span').textContent = state.loading && desiredOn ? 'Connecting' : (desiredOn ? 'On' : 'Connect');
+        button.querySelector('span').textContent = 'Connect';
         button.classList.toggle('is-on', desiredOn === true);
         button.classList.toggle('is-loading', state.loading === true && desiredOn === true);
         button.addEventListener('click', () => {
@@ -942,15 +943,80 @@ function buildWandDetails (wand, state) {
         el.classList.toggle('is-on', state.buttons && state.buttons[el.dataset.buttonKey] === true);
     });
     wrapper.querySelectorAll('[data-wand-action]').forEach(button => {
+        applyWandActionButtonFeedback(button, state.actionFeedback && state.actionFeedback[button.dataset.wandAction]);
         button.addEventListener('click', () => {
-            if (button.dataset.wandAction === 'refresh_tracking') {
-                button.disabled = true;
-                setTimeout(() => { button.disabled = false; }, 3000);
-            }
-            runWandAction(button.dataset.wandAction, wand.entry_id).catch(() => {});
+            handleWandDetailAction(wand, button.dataset.wandAction);
         });
     });
     return wrapper;
+}
+
+function getWandActionText (action, phase) {
+    const labels = {
+        refresh_tracking: { busy: 'Restarting', done: 'Tracking Refreshed', error: 'Refresh Failed' },
+        calibrate_imu: { busy: 'Calibrating', done: 'IMU Calibrated', error: 'IMU Failed' },
+        calibrate_button: { busy: 'Calibrating', done: 'Buttons Calibrated', error: 'Buttons Failed' }
+    };
+    return labels[action] && labels[action][phase] ? labels[action][phase] : phase;
+}
+
+function setWandActionFeedback (entryId, action, phase, duration = 1800) {
+    const state = getWandRuntimeState(entryId);
+    if (!state.actionFeedback) state.actionFeedback = {};
+    state.actionFeedback[action] = {
+        phase,
+        text: getWandActionText(action, phase)
+    };
+    renderWandConnectList();
+    if (duration > 0) {
+        setTimeout(() => {
+            const nextState = getWandRuntimeState(entryId);
+            if (nextState.actionFeedback && nextState.actionFeedback[action] && nextState.actionFeedback[action].phase === phase) {
+                delete nextState.actionFeedback[action];
+                renderWandConnectList();
+            }
+        }, duration);
+    }
+}
+
+function applyWandActionButtonFeedback (button, feedback) {
+    if (!button) return;
+    if (!button.dataset.defaultText) button.dataset.defaultText = button.textContent;
+    button.classList.remove('is-busy', 'is-done', 'is-error');
+    if (!feedback || !feedback.phase) {
+        button.textContent = button.dataset.defaultText;
+        button.disabled = false;
+        return;
+    }
+    button.textContent = feedback.text || button.dataset.defaultText;
+    button.classList.add(`is-${feedback.phase}`);
+    button.disabled = feedback.phase === 'busy';
+}
+
+function handleWandDetailAction (wand, action) {
+    if (!wand || !action) return;
+    const state = getWandRuntimeState(wand.entry_id);
+    if (action === 'refresh_tracking') {
+        state.tracking = false;
+    }
+    setWandActionFeedback(wand.entry_id, action, 'busy', action === 'refresh_tracking' ? 3000 : 2500);
+    runWandAction(action, wand.entry_id)
+        .then(() => {
+            if (action === 'refresh_tracking') {
+                setTimeout(() => {
+                    const nextState = getWandRuntimeState(wand.entry_id);
+                    if (nextState.connected === true) {
+                        nextState.tracking = true;
+                        renderWandConnectList();
+                    }
+                }, 2300);
+            }
+            setWandActionFeedback(wand.entry_id, action, 'done');
+        })
+        .catch(() => {
+            setWandActionFeedback(wand.entry_id, action, 'error', 2200);
+        });
+    renderWandConnectList();
 }
 
 async function cycleWandTipColor (wand) {

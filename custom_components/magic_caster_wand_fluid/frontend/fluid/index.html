@@ -517,8 +517,9 @@
       }
 
       .wand-connect-card.is-connected .wand-connect-card-button {
-        color: #06160d;
-        background: linear-gradient(180deg, #9cffc0, #44d77b);
+        color: rgba(255, 255, 255, 0.9);
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.16);
       }
 
       .wand-connect-card-button .wand-connect-switch {
@@ -535,7 +536,7 @@
       }
 
       .wand-connect-card-button.is-on .wand-connect-switch {
-        background: rgba(42, 130, 65, 0.54);
+        background: linear-gradient(180deg, rgba(156, 255, 192, 0.92), rgba(68, 215, 123, 0.82));
       }
 
       .wand-connect-card-button.is-on .wand-connect-switch::before {
@@ -733,6 +734,31 @@
 
       .wand-refresh-button:disabled {
         opacity: 0.45;
+      }
+
+      .wand-refresh-button.is-busy,
+      .wand-refresh-button.is-done,
+      .wand-refresh-button.is-error {
+        opacity: 1;
+        transform: translateY(1px);
+      }
+
+      .wand-refresh-button.is-busy {
+        color: #dff8ff;
+        border-color: rgba(116, 221, 255, 0.46);
+        background: rgba(116, 221, 255, 0.14);
+      }
+
+      .wand-refresh-button.is-done {
+        color: #e6ffed;
+        border-color: rgba(85, 219, 119, 0.56);
+        background: rgba(85, 219, 119, 0.18);
+      }
+
+      .wand-refresh-button.is-error {
+        color: #ffe6e6;
+        border-color: rgba(227, 80, 80, 0.56);
+        background: rgba(227, 80, 80, 0.18);
       }
 
       .wand-button-sensors {
