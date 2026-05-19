@@ -3443,14 +3443,26 @@ function startAdditionalWandController (wand) {
     if (!wand || !wand.state_url) return;
     const entryId = wand.entry_id;
     const pointer = new pointerPrototype();
-    pointer.id = -9100 - Array.from(wandRuntimeStates.keys()).indexOf(entryId);
+    pointer.id = -9100 - Math.max(0, fluidWands.findIndex(item => item.entry_id === entryId));
     pointers.push(pointer);
+    const wandTargetSmoothingMin = 0.32;
+    const wandTargetSmoothingMax = 0.82;
+    const wandPointerSmoothingMin = 0.3;
+    const wandPointerSmoothingMax = 0.74;
+    const wandMinStep = 1.4;
+    let streamConnected = false;
+    let lastStreamMessage = 0;
+    let streamReconnectTimer = null;
+    let polling = false;
+    let nextPollTimer = null;
     const motion = {
         active: false,
         currentX: canvas.width / 2,
         currentY: canvas.height / 2,
         targetX: canvas.width / 2,
         targetY: canvas.height / 2,
+        rawTargetX: canvas.width / 2,
+        rawTargetY: canvas.height / 2,
         lastPacketAt: 0
     };
     let active = false;
@@ -3459,6 +3471,14 @@ function startAdditionalWandController (wand) {
         active = false;
         motion.active = false;
         updatePointerUpData(pointer);
+    };
+
+    const movePointer = (posX, posY) => {
+        updatePointerMoveData(pointer, posX, posY);
+        if (pointer.moved) {
+            splatPointer(pointer);
+            pointer.moved = false;
+        }
     };
 
     const frame = () => {
@@ -3476,21 +3496,49 @@ function startAdditionalWandController (wand) {
             pointer.color = getWandFluidColor(entryId);
             active = true;
         }
+        if (config.MATCH_LED_COLOR) {
+            pointer.color = getWandFluidColor(entryId);
+        }
+        const rawDx = motion.rawTargetX - motion.targetX;
+        const rawDy = motion.rawTargetY - motion.targetY;
+        const rawDistance = Math.hypot(rawDx, rawDy);
+        const targetBlend = Math.min(
+            wandTargetSmoothingMax,
+            wandTargetSmoothingMin + rawDistance / Math.max(canvas.width, canvas.height) * 1.6
+        );
+        motion.targetX += rawDx * targetBlend;
+        motion.targetY += rawDy * targetBlend;
+
         const dx = motion.targetX - motion.currentX;
         const dy = motion.targetY - motion.currentY;
         const distance = Math.hypot(dx, dy);
         if (distance > 0.5) {
-            const step = Math.min(distance, Math.max(distance * 0.58, 1.4), Math.max(10, Math.min(canvas.width, canvas.height) * 0.06));
+            const minDimension = Math.min(canvas.width, canvas.height);
+            const pointerBlend = Math.min(
+                wandPointerSmoothingMax,
+                wandPointerSmoothingMin + distance / Math.max(canvas.width, canvas.height) * 1.3
+            );
+            const maxStep = Math.max(10, minDimension * 0.06);
+            const step = Math.min(distance, Math.max(distance * pointerBlend, wandMinStep), maxStep);
             const nextX = motion.currentX + (dx / distance) * step;
             const nextY = motion.currentY + (dy / distance) * step;
-            updatePointerMoveData(pointer, nextX, nextY);
-            if (pointer.moved) {
-                splatPointer(pointer);
-                pointer.moved = false;
+            const moveDistance = Math.hypot(nextX - motion.currentX, nextY - motion.currentY);
+            const segmentSpacing = Math.max(8, minDimension * 0.018);
+            const segments = Math.max(1, Math.min(4, Math.ceil(moveDistance / segmentSpacing)));
+            const startX = motion.currentX;
+            const startY = motion.currentY;
+            for (let i = 1; i <= segments; i++) {
+                const t = i / segments;
+                movePointer(
+                    startX + (nextX - startX) * t,
+                    startY + (nextY - startY) * t
+                );
             }
             motion.currentX = nextX;
             motion.currentY = nextY;
+            return;
         }
+        movePointer(motion.currentX, motion.currentY);
     };
     frame();
 
@@ -3514,38 +3562,80 @@ function startAdditionalWandController (wand) {
             motion.currentY = start.y;
             motion.targetX = start.x;
             motion.targetY = start.y;
+            motion.rawTargetX = start.x;
+            motion.rawTargetY = start.y;
             updatePointerDownData(pointer, pointer.id, start.x, start.y);
             pointer.color = getWandFluidColor(entryId);
             active = true;
         }
         motion.active = data.active === true;
         const mapped = mapWandPayloadToCanvas(entryId, data);
-        motion.targetX = mapped.x;
-        motion.targetY = mapped.y;
+        motion.rawTargetX = mapped.x;
+        motion.rawTargetY = mapped.y;
         motion.lastPacketAt = Date.now();
         if (!motion.active) stop();
     };
 
+    const fetchState = async () => {
+        const response = await fetch(wand.state_url, {
+            cache: 'no-store',
+            credentials: 'include'
+        });
+        if (!response.ok) return { connected: false, active: false, spell: 'awaiting' };
+        return response.json();
+    };
+
+    const connectEventStream = () => {
+        if (!wand.events_url || !window.EventSource) return;
+        if (streamReconnectTimer) {
+            clearTimeout(streamReconnectTimer);
+            streamReconnectTimer = null;
+        }
+        const source = new EventSource(wand.events_url);
+        source.onopen = () => {
+            streamConnected = true;
+            lastStreamMessage = Date.now();
+        };
+        source.addEventListener('wand', event => {
+            try {
+                streamConnected = true;
+                lastStreamMessage = Date.now();
+                handle(JSON.parse(event.data));
+            } catch (err) {}
+        });
+        source.onerror = () => {
+            streamConnected = false;
+            source.close();
+            if (!streamReconnectTimer) {
+                streamReconnectTimer = setTimeout(connectEventStream, 1500);
+            }
+        };
+    };
+
     const poll = async () => {
+        if (streamConnected && Date.now() - lastStreamMessage < 1000) {
+            if (nextPollTimer) clearTimeout(nextPollTimer);
+            nextPollTimer = setTimeout(poll, 2000);
+            return;
+        }
+        if (polling) return;
+        polling = true;
         try {
-            const response = await fetch(wand.state_url, {
-                cache: 'no-store',
-                credentials: 'include'
-            });
-            const data = response.ok
-                ? await response.json()
-                : { connected: false, active: false, spell: 'awaiting' };
-            handle(data);
+            handle(await fetchState());
         } catch (err) {
             getWandRuntimeState(entryId).connected = false;
+            stop();
             renderWandConnectList();
             renderWandPlayerLabels();
         } finally {
+            polling = false;
             const state = getWandRuntimeState(entryId);
             const delay = state.connected ? (motion.active ? 250 : 1000) : 3000;
-            setTimeout(poll, delay);
+            if (nextPollTimer) clearTimeout(nextPollTimer);
+            nextPollTimer = setTimeout(poll, delay);
         }
     };
+    connectEventStream();
     poll();
 }
 
