@@ -11,7 +11,7 @@ from homeassistant.helpers.device_registry import CONNECTION_BLUETOOTH, DeviceIn
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import DOMAIN, FLUID_CONFIG_OPTIONS, MANUFACTURER
+from .const import DOMAIN, FLUID_CONFIG_OPTIONS, MANUFACTURER, format_device_name
 from .fluid import update_fluid_runtime_values
 
 
@@ -67,7 +67,7 @@ class McwFluidNumber(NumberEntity, RestoreEntity):
         """Return device info."""
         return DeviceInfo(
             connections={(CONNECTION_BLUETOOTH, self._address)},
-            name=f"Magic Caster Wand Fluid Effects {self._identifier}",
+            name=format_device_name(self._identifier),
             manufacturer=MANUFACTURER,
             model=self._mcw.model if self._mcw else None,
         )

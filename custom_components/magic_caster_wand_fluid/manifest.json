@@ -1,6 +1,6 @@
 {
   "domain": "magic_caster_wand_fluid",
-  "name": "Magic Caster Wand Fluid Effects",
+  "name": "Magic Caster Wand FX",
   "bluetooth": [
     {
       "connectable": true,
@@ -16,11 +16,11 @@
     "bluetooth",
     "bluetooth_adapters"
   ],
-  "documentation": "https://github.com/L-Milko/hass-magic-caster-wand-luka",
+  "documentation": "https://github.com/L-Milko/hass-magic-caster-wand-fx",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/L-Milko/hass-magic-caster-wand-luka/issues",
+  "issue_tracker": "https://github.com/L-Milko/hass-magic-caster-wand-fx/issues",
   "requirements": [
     "numpy"
   ],
-  "version": "1.5.67"
+  "version": "1.5.68"
 }

@@ -16,6 +16,7 @@ from .const import (
     DOMAIN,
     MANUFACTURER,
     WAND_TYPES,
+    format_device_name,
 )
 from .fluid import sync_fluid_runtime_config
 from .mcw_ble import McwDevice
@@ -62,7 +63,7 @@ class McwCastingLedColorSelect(SelectEntity, RestoreEntity):
         """Return device info."""
         return DeviceInfo(
             connections={(CONNECTION_BLUETOOTH, self._address)},
-            name=f"Magic Caster Wand Fluid Effects {self._identifier}",
+            name=format_device_name(self._identifier),
             manufacturer=MANUFACTURER,
         )
 
@@ -138,7 +139,7 @@ class McwWandTypeSelect(SelectEntity, RestoreEntity):
         """Return device info."""
         return DeviceInfo(
             connections={(CONNECTION_BLUETOOTH, self._address)},
-            name=f"Magic Caster Wand Fluid Effects {self._identifier}",
+            name=format_device_name(self._identifier),
             manufacturer=MANUFACTURER,
         )
 

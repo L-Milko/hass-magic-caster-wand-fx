@@ -1,275 +1,251 @@
-# hass-magic-caster-wand-luka
+﻿# hass-magic-caster-wand-fx
 [![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?logo=home-assistant)](https://hacs.xyz/)
-[![GitHub Release](https://img.shields.io/github/release/eigger/hass-magic-caster-wand.svg)](https://github.com/eigger/hass-magic-caster-wand/releases)
-[![License](https://img.shields.io/github/license/eigger/hass-magic-caster-wand)](https://github.com/eigger/hass-magic-caster-wand/blob/main/LICENSE)
+[![GitHub Release](https://img.shields.io/github/release/L-Milko/hass-magic-caster-wand-fx.svg)](https://github.com/L-Milko/hass-magic-caster-wand-fx/releases)
+[![License](https://img.shields.io/github/license/L-Milko/hass-magic-caster-wand-fx)](https://github.com/L-Milko/hass-magic-caster-wand-fx/blob/main/LICENSE)
 ![integration usage](https://img.shields.io/badge/dynamic/json?color=41BDF5&logo=home-assistant&label=integration%20usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=%24.magic_caster_wand_fluid.total)
 
-Magic Caster Wand Fluid Effects Home Assistant Integration
+Magic Caster Wand FX is a Home Assistant custom integration for Magic Caster Wand Bluetooth control, WebGL fluid spell visuals, finger or mouse spell casting, and multi-wand play.
 
 This fork uses the separate Home Assistant domain `magic_caster_wand_fluid`, so it can be installed without overlapping the original `magic_caster_wand` integration.
 
-<table>
-  <tr>
-    <td colspan="2" align="center">
-      <img width="720" alt="mcw" src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/images/mcw.png" />
-    </td>
-  </tr>
-  <tr>
-    <td align="center" valign="bottom">
-      <img width="140"
-           alt="Turn on device demo"
-           src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/images/device_on.gif" />
-      <div style="margin-top:8px;"><b>Turn on Device</b></div>
-    </td>
-    <td align="center" valign="bottom">
-      <img width="360"
-           alt="Turn on light demo"
-           src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/images/light_on.gif" />
-      <div style="margin-top:8px;"><b>Turn on Light</b></div>
-    </td>
-  </tr>
-</table>
-
-
-
-## 💬 Feedback & Support
-
-🐞 Found a bug? Let us know via an [Issue](https://github.com/eigger/hass-magic-caster-wand/issues).  
-💡 Have a question or suggestion? Join the [Discussion](https://github.com/eigger/hass-magic-caster-wand/discussions)!
-
 ## Supported Models
 
-- Defiant
 - Loyal
 - Honourable
+- Defiant
 
 ## Installation
-1. Install this integration with HACS (adding repository required), or copy the contents of this
-repository into the `custom_components/magic_caster_wand_fluid` directory.
-2. Restart Home Assistant.
 
-## ⚠️ Important Notice
-- It is **strongly recommended to use a Bluetooth proxy instead of a built-in Bluetooth adapter**.  
-  Bluetooth proxies generally offer more stable connections and better range, especially in environments with multiple BLE devices.
+1. Install with HACS as a custom repository: `https://github.com/L-Milko/hass-magic-caster-wand-fx`.
+2. Select category `Integration`.
+3. Restart Home Assistant after installing or updating.
+4. Add the integration from **Settings -> Devices & services -> Add integration -> Magic Caster Wand FX**.
 
-> [!TIP]
-> For hardware recommendations, refer to [Great ESP32 Board for an ESPHome Bluetooth Proxy](https://community.home-assistant.io/t/great-esp32-board-for-an-esphome-bluetooth-proxy/916767/31).
-- When using a Bluetooth proxy, it is strongly recommended to **keep the scan interval at its default value**.  
-  Changing these values may cause issues with Bluetooth data transmission.
-- **bluetooth_proxy:** must always have **active: true**.
-  
-  Example (recommended configuration with default values):
+If installing manually, copy this repository's `custom_components/magic_caster_wand_fluid` folder into Home Assistant's `/config/custom_components/magic_caster_wand_fluid` folder.
 
-  ```yaml
-  esp32_ble_tracker:
-    scan_parameters:
-      active: true
-  
-  bluetooth_proxy:
-    active: true
+## Important Bluetooth Notes
 
-## Spells & Motions
->[!IMPORTANT]
->You must connect to the wand via Bluetooth(Switch) first in order to receive the spell values.
+- A Bluetooth proxy is strongly recommended for stable range and multiple wands.
+- `bluetooth_proxy` should use `active: true`.
+- Keep scan interval at the default unless you are troubleshooting.
 
-## Built-in Spell Gestures for the Wand
-<table>
-  <tr>
-    <td colspan="2" align="center">
-      <img width="560" alt="mcw" src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/images/default_spell.png" />
-    </td>
-  </tr>
-</table>
-
-
-## Spell Gestures
-
-<table>
-  <tr>
-    <td align="center"><b>Aberto</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/aberto.png" width="100"/></td>
-    <td align="center"><b>Accio</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/accio.png" width="100"/></td>
-    <td align="center"><b>Aguamenti</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/aguamenti.png" width="100"/></td>
-    <td align="center"><b>Alohomora</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/alohomora.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Anteoculatia</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/anteoculatia.png" width="100"/></td>
-    <td align="center"><b>Appare Vestigium</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/appare_vestigium.png" width="100"/></td>
-    <td align="center"><b>Arania Exumai</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/arania_exumai.png" width="100"/></td>
-    <td align="center"><b>Ascendio</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/ascendio.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Bombarda</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/bombarda.png" width="100"/></td>
-    <td align="center"><b>Brachiabindo</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/brachiabindo.png" width="100"/></td>
-    <td align="center"><b>Calvorio</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/calvorio.png" width="100"/></td>
-    <td align="center"><b>Cantis</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/cantis.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Colloportus</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/colloportus.png" width="100"/></td>
-    <td align="center"><b>Colloshoo</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/colloshoo.png" width="100"/></td>
-    <td align="center"><b>Colovaria</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/colovaria.png" width="100"/></td>
-    <td align="center"><b>Confringo</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/confringo.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Confundo</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/confundo.png" width="100"/></td>
-    <td align="center"><b>Densaugeo</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/densaugeo.png" width="100"/></td>
-    <td align="center"><b>Entomorphis</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/entomorphis.png" width="100"/></td>
-    <td align="center"><b>Evanesco</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/evanesco.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Expecto Patronum</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/expecto_patronum.png" width="100"/></td>
-    <td align="center"><b>Expelliarmus</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/expelliarmus.png" width="100"/></td>
-    <td align="center"><b>Expulso</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/expulso.png" width="100"/></td>
-    <td align="center"><b>Finestra</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/finestra.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Finite</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/finite.png" width="100"/></td>
-    <td align="center"><b>Flagrate</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/flagrate.png" width="100"/></td>
-    <td align="center"><b>Flipendo</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/flipendo.png" width="100"/></td>
-    <td align="center"><b>Fulgari</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/fulgari.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Glacius</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/glacius.png" width="100"/></td>
-    <td align="center"><b>Herbivicus</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/herbivicus.png" width="100"/></td>
-    <td align="center"><b>Immobulus</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/immobulus.png" width="100"/></td>
-    <td align="center"><b>Impedimenta</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/impedimenta.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Incarcerous</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/incarcerous.png" width="100"/></td>
-    <td align="center"><b>Incendio</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/incendio.png" width="100"/></td>
-    <td align="center"><b>Lumos</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/lumos.png" width="100"/></td>
-    <td align="center"><b>Lumos Maxima</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/lumos_maxima.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Melefors</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/melefors.png" width="100"/></td>
-    <td align="center"><b>Meteolojinx</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/meteolojinx.png" width="100"/></td>
-    <td align="center"><b>Mucus Ad Nauseum</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/mucus_ad_nauseum.png" width="100"/></td>
-    <td align="center"><b>Nox</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/nox.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Orchideous</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/orchideous.png" width="100"/></td>
-    <td align="center"><b>Petrificus Totalus</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/petrificus_totalus.png" width="100"/></td>
-    <td align="center"><b>Piertotum Locomotor</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/piertotum_locomotor.png" width="100"/></td>
-    <td align="center"><b>Protego</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/protego.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Quietus</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/quietus.png" width="100"/></td>
-    <td align="center"><b>Reducto</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/reducto.png" width="100"/></td>
-    <td align="center"><b>Reparo</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/reparo.png" width="100"/></td>
-    <td align="center"><b>Revelio</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/revelio.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Rictusempra</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/rictusempra.png" width="100"/></td>
-    <td align="center"><b>Riddikulus</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/riddikulus.png" width="100"/></td>
-    <td align="center"><b>Salvio Hexia</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/salvio_hexia.png" width="100"/></td>
-    <td align="center"><b>Scourgify</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/scourgify.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Silencio</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/silencio.png" width="100"/></td>
-    <td align="center"><b>Stupefy</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/stupefy.png" width="100"/></td>
-    <td align="center"><b>The Cheering Charm</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/the_cheering_charm.png" width="100"/></td>
-    <td align="center"><b>The Force Spell</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/the_force_spell.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>The Hair Thickening Growing Charm</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/the_hair_thickening_growing_charm.png" width="100"/></td>
-    <td align="center"><b>The Hour Reversal Charm</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/the_hour_reversal_charm.png" width="100"/></td>
-    <td align="center"><b>The Sleeping Charm</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/the_sleeping_charm.png" width="100"/></td>
-    <td align="center"><b>The Spell Thickening Charm</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/the_spell_thickening_charm.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>The Stretching Jinx</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/the_stretching_jinx.png" width="100"/></td>
-    <td align="center"><b>Ventus</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/ventus.png" width="100"/></td>
-    <td align="center"><b>Verdimillious</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/verdimillious.png" width="100"/></td>
-    <td align="center"><b>Vermillious</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/vermillious.png" width="100"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Wingardium Leviosa</b><br/><img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/gestures/wingardium_leviosa.png" width="100"/></td>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-</table>
-
-
----
-
-## Spell Canvas
-
-Real-time visualization of wand movements.
-
-| Feature | Description |
-|--------|-------------|
-| **Spell tracking** | Enable the Spell Tracking switch to receive IMU data from the wand. |
-| **Drawing** | Drawing starts when the wand button is pressed and button states are detected. |
-| **Spell recognition** | Install the [hass-tflite](https://github.com/ificator/hass-tflite) add-on, then use **Open web UI** to upload `model.tflite`. Configure the server address in settings if using a custom fork. |
-
-### WebGL Fluid Canvas
-
-This fork also serves a browser-rendered WebGL fluid canvas from the integration's bundled fluid frontend. After restarting Home Assistant and enabling the wand's **Spell Tracking** switch, open:
-
-```text
-/magic_caster_wand_fluid/fluid
-```
-
-If you have multiple wands, you can also open a specific one with `/magic_caster_wand_fluid/fluid/<wand_id>`. Press all wand buttons while moving the wand to inject fluid into the canvas.
-
-Fluid controls such as simulation resolution, dye resolution, dissipation, curl, splat radius/force, bloom, sunrays, and color cycling are available from the Magic Caster Wand Fluid Effects integration's **Configure** screen.
-
-<table>
-  <tr>
-    <td colspan="2" align="center">
-      <img width="560" alt="mcw" src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/images/tflite_server.png" />
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center">
-      <img width="320" height="222" alt="image" src="https://github.com/user-attachments/assets/8b896c42-170c-47dc-a7e9-212a4e179563" />
-    </td>
-    <td colspan="2" align="center">
-      <img width="240" height="222" alt="image" src="https://github.com/user-attachments/assets/e8d0baf9-abf9-48b1-b157-c3d5a2679bda" />
-    </td>
-    <td colspan="2" align="center">
-      <img width="240" height="222" alt="image" src="https://github.com/user-attachments/assets/7e8c8c2d-6ead-47a3-9e9a-25f5756ce5f4" />
-    </td>
-  </tr>
-</table>
-
-> [!NOTE]
-> The `model.tflite` file is not shared publicly at this time due to potential issues and to ensure compatibility.
-
-
-<table>
-  <tr>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/eigger/hass-magic-caster-wand/master/docs/images/spell_canvas.png" width="480" alt="Spell Canvas Demo"/>
-    </td>
-  </tr>
-</table>
-
-## Automation Example
+Recommended ESPHome shape:
 
 ```yaml
-alias: Lumos
-description: ""
-triggers:
-  - trigger: state
+esp32_ble_tracker:
+  scan_parameters:
+    active: true
+
+bluetooth_proxy:
+  active: true
+```
+
+## Fluid Canvas
+
+Open the WebGL fluid page from a Home Assistant dashboard iframe:
+
+```yaml
+type: iframe
+url: /magic_caster_wand_fluid/fluid
+aspect_ratio: 75%
+```
+
+The canvas supports wand motion, multiple connected wands, mouse or finger casting, learn mode, a Spell Book, and clickable spell path previews where a path file is bundled.
+
+## Draw Spell Sensor
+
+The draw-only spell sensor uses the FX name on new installs:
+
+```text
+sensor.magic_caster_wand_fx_draw_spell
+```
+
+Existing Home Assistant entity registry entries may keep an older entity ID until Home Assistant reloads the integration. If an old draw spell entity remains, rename it in **Settings -> Devices & services -> Entities**, or remove the stale entity registry entry and reload the integration.
+
+## Multi-Wand Automation Pattern
+
+For multiple wands, put all wand spell sensors into the same trigger and branch from `trigger.to_state.state`. Add your real wand entity IDs to the list.
+
+```yaml
+alias: Cast Wand And Draw Spells
+description: Magic Caster Wand FX multi-wand spell test
+mode: restart
+trigger:
+  - platform: state
     entity_id:
-      - sensor.mcwf_5363f8ea_spell
-    attribute: last_updated
-conditions: []
-actions:
+      - sensor.magic_caster_wand_fx_1_spell
+      - sensor.magic_caster_wand_fx_2_spell
+      - sensor.magic_caster_wand_fx_3_spell
+      - sensor.magic_caster_wand_fx_4_spell
+    to:
+      - lumos
+      - nox
+    id: wand_spell
+  - platform: state
+    entity_id:
+      - sensor.magic_caster_wand_fx_draw_spell
+    to:
+      - draw_lumos
+      - draw_nox
+    id: draw_spell
+action:
+  - variables:
+      spell: "{{ trigger.to_state.state }}"
+      source_entity: "{{ trigger.entity_id }}"
   - choose:
-      - conditions:
-          - condition: state
-            entity_id: sensor.mcwf_5363f8ea_spell
-            state:
-              - Lumos
+      - conditions: "{{ spell == 'lumos' }}"
         sequence:
           - action: light.turn_on
             target:
-              entity_id: light.esp_kocom_livingroom_light_1
-mode: single
+              entity_id: light.theater
+            data:
+              brightness_pct: 60
+      - conditions: "{{ spell == 'draw_lumos' }}"
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: light.theater
+            data:
+              brightness_pct: 100
+      - conditions: "{{ spell in ['nox', 'draw_nox'] }}"
+        sequence:
+          - action: light.turn_off
+            target:
+              entity_id: light.theater
+            data: {}
 ```
 
+Tip: each connected wand has its own `Spell` sensor. The draw/finger sensor is separate so you can automate `draw_lumos` differently from wand `lumos`.
+
+## Spell Book Gestures
+
+These are the spells currently listed in the iframe Spell Book. Cards marked with a fluid path preview can draw into the WebGL canvas when clicked.
+
+<table>
+  <tr>
+    <td align="center"><b>Colovaria</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/colovaria.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Expelliarmus</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/expelliarmus.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Finite</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/finite.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Lumos</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/lumos.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Lumos Maxima</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/lumos_maxima.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Nox</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/nox.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Petrificus Totalus</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/petrificus_totalus.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Stupefy</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/stupefy.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Meteolojinx</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/meteolojinx.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Expecto Patronum</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/expecto_patronum.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Immobulus</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/immobulus.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Incendio</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/incendio.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Aguamenti</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/aguamenti.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Glacius</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/glacius.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Ascendio</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/ascendio.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Protego</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/protego.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Wingardium Leviosa</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/wingardium_leviosa.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Brachiabindo</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/brachiabindo.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Finestra</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/finestra.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Incarcerous</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/incarcerous.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Reparo</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/reparo.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Bombarda</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/bombarda.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Arania Exumai</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/arania_exumai.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Reducto</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/reducto.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Ventus</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/ventus.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Fulgari</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/fulgari.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Orchideous</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/orchideous.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Expulso</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/expulso.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Alohomora</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/alohomora.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Herbivicus</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/herbivicus.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Cantis</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/cantis.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Flagrate</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/flagrate.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Salvio Hexia</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/salvio_hexia.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Verdimillious</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/verdimillious.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Vermillious</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/vermillious.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Impedimenta</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/impedimenta.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Confundo</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/confundo.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Confringo</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/confringo.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Appare Vestigium</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/appare_vestigium.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Accio</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/accio.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Riddikulus</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/riddikulus.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>The Force Spell</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/the_force_spell.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Piertotum Locomotor</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/piertotum_locomotor.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Scourgify</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/scourgify.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Colloshoo</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/colloshoo.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Pestis Incendium</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/pestis_incendium.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Flipendo</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/flipendo.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Locomotor</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/locomotor.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Sonorus</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/sonorus.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Depulso</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/depulso.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Everte Statum</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/everte_statum.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Descendo</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/descendo.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>The Pepper-Breath Hex</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/the_pepper_breath_hex.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Langlock</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/langlock.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Spongify</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/spongify.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Aberto</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/aberto.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Anteoculatia</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/anteoculatia.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Calvorio</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/calvorio.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Colloportus</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/colloportus.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Densaugeo</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/densaugeo.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Entomorphis</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/entomorphis.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Evanesco</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/evanesco.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Melefors</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/melefors.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Mucus Ad Nauseum</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/mucus_ad_nauseum.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Quietus</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/quietus.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Revelio</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/revelio.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Rictusempra</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/rictusempra.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Silencio</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/silencio.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>The Cheering Charm</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/the_cheering_charm.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>The Hair Thickening Growing Charm</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/the_hair_thickening_growing_charm.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>The Hour Reversal Charm</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/the_hour_reversal_charm.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>The Sleeping Charm</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/the_sleeping_charm.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><b>The Stretching Jinx</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/the_stretching_jinx.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td align="center"><b>Avada Kedavra</b><br/><img src="custom_components/magic_caster_wand_fluid/frontend/fluid/gestures/avada_kedavra.png" width="100"/><br/><sub>Fluid path preview included</sub></td>
+    <td></td>
+    <td></td>
+  </tr>
+</table>
+
+## Spell Recognition
+
+Install the `hass-tflite` add-on and upload your compatible `model.tflite` through its web UI. Configure the TFLite server URL from the integration options if needed.
+
+> The `model.tflite` file is not included publicly in this repository.
+
 ## References
-- [Magic-Caster-Wand-Open-app-ai (whymaxwhy)](https://github.com/whymaxwhy/Magic-Caster-Wand-Open-app-ai.git)
-- [OpenCaster (Blues-Hailfire)](https://github.com/Blues-Hailfire/OpenCaster.git)
+
+- [Magic-Caster-Wand-Open-app-ai](https://github.com/whymaxwhy/Magic-Caster-Wand-Open-app-ai.git)
+- [OpenCaster](https://github.com/Blues-Hailfire/OpenCaster.git)
+- [Original hass-magic-caster-wand](https://github.com/eigger/hass-magic-caster-wand)

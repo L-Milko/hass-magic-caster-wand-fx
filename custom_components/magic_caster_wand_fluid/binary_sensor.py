@@ -15,7 +15,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
 
-from .const import DOMAIN, MANUFACTURER
+from .const import DOMAIN, MANUFACTURER, format_device_name
 from .mcw_ble import BLEData
 
 _LOGGER = logging.getLogger(__name__)
@@ -108,7 +108,7 @@ class McwButtonBinarySensor(
         """Return device info."""
         return DeviceInfo(
             connections={(CONNECTION_BLUETOOTH, self._address)},
-            name=f"Magic Caster Wand Fluid Effects {self._identifier}",
+            name=format_device_name(self._identifier),
             manufacturer=MANUFACTURER,
             model=self._mcw.model if self._mcw else None,
         )
@@ -170,7 +170,7 @@ class McwConnectionBinarySensor(
         """Return device info."""
         return DeviceInfo(
             connections={(CONNECTION_BLUETOOTH, self._address)},
-            name=f"Magic Caster Wand Fluid Effects {self._identifier}",
+            name=format_device_name(self._identifier),
             manufacturer=MANUFACTURER,
             model=self._mcw.model if self._mcw else None,
         )

@@ -23,7 +23,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Magic Caster Wand Fluid Effects Configuration",
+        "title": "Magic Caster Wand FX Configuration",
         "description": "Configure spell detection and WebGL Fluid Canvas settings.",
         "data": {
           "tflite_url": "TFLite Server URL",

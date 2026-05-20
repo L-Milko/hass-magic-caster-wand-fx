@@ -14,6 +14,7 @@ from homeassistant.core import (
     ServiceCall,
 )
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
@@ -24,6 +25,7 @@ from .const import (
     CONF_WAND_TYPE,
     DEFAULT_CASTING_LED_COLOR,
     DEFAULT_SCAN_INTERVAL,
+    DEVICE_NAME_PREFIX,
     DRAW_ONLY_UNIQUE_ID,
     DOMAIN,
     DEFAULT_WAND_TYPE,
@@ -177,6 +179,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    _async_migrate_legacy_names(hass, entry, draw_only)
 
     # Register update listener to handle options changes
     entry.async_on_unload(entry.add_update_listener(async_update_options))
@@ -246,6 +249,41 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_register(DOMAIN, "play_spell", handle_play_spell)
 
     return True
+
+
+def _async_migrate_legacy_names(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    draw_only: bool,
+) -> None:
+    """Move old Luka-facing names to the FX naming used by this fork."""
+    if "Luka" in entry.title or (draw_only and entry.title != DEVICE_NAME_PREFIX):
+        hass.config_entries.async_update_entry(entry, title=DEVICE_NAME_PREFIX)
+
+    entity_registry = er.async_get(hass)
+    for entity_entry in er.async_entries_for_config_entry(entity_registry, entry.entry_id):
+        entity_id = entity_entry.entity_id
+        if ".magic_caster_wand_luka_" not in entity_id:
+            continue
+
+        new_entity_id = entity_id.replace(
+            ".magic_caster_wand_luka_",
+            ".magic_caster_wand_fx_",
+            1,
+        )
+        if entity_registry.async_get(new_entity_id):
+            continue
+        try:
+            entity_registry.async_update_entity(
+                entity_id,
+                new_entity_id=new_entity_id,
+            )
+        except ValueError:
+            _LOGGER.debug(
+                "Could not migrate legacy entity id %s to %s",
+                entity_id,
+                new_entity_id,
+            )
 
 
 async def _async_update_method(

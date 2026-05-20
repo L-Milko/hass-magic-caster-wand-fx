@@ -1,6 +1,7 @@
 """Constants for Magic Caster Wand Fluid Effects BLE integration."""
 
 DOMAIN = "magic_caster_wand_fluid"
+DEVICE_NAME_PREFIX = "Magic Caster Wand FX"
 MANUFACTURER = "Warner Bros. Entertainment Inc."
 DEFAULT_SCAN_INTERVAL = 300
 CONF_TFLITE_URL = "tflite_url"
@@ -192,3 +193,12 @@ FLUID_RUNTIME_SWITCHES = {
 
 # Dispatcher signals
 SIGNAL_SPELL_MODE_CHANGED = f"{DOMAIN}_spell_mode_changed"
+
+
+def format_device_name(identifier: str) -> str:
+    """Return the Home Assistant device name for a wand or draw-only entry."""
+    return (
+        DEVICE_NAME_PREFIX
+        if identifier == DRAW_ONLY_UNIQUE_ID
+        else f"{DEVICE_NAME_PREFIX} {identifier}"
+    )

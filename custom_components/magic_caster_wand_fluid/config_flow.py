@@ -23,6 +23,7 @@ from .const import (
     CONF_DRAW_ONLY,
     CONF_WAND_ALIAS,
     CONF_WAND_TYPE,
+    DEVICE_NAME_PREFIX,
     DOMAIN,
     DRAW_ONLY_UNIQUE_ID,
     DEFAULT_WAND_TYPE,
@@ -110,7 +111,7 @@ class McwConfigFlow(ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(DRAW_ONLY_UNIQUE_ID, raise_on_progress=False)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title="Magic Caster Wand Fluid Effects Draw Only",
+                    title=DEVICE_NAME_PREFIX,
                     data={CONF_DRAW_ONLY: True},
                 )
 

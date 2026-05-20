@@ -13,7 +13,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator
 
-from .const import DOMAIN, FLUID_CONFIG_OPTIONS, FLUID_RUNTIME_SWITCHES, MANUFACTURER, SIGNAL_SPELL_MODE_CHANGED
+from .const import DOMAIN, FLUID_CONFIG_OPTIONS, FLUID_RUNTIME_SWITCHES, MANUFACTURER, SIGNAL_SPELL_MODE_CHANGED, format_device_name
 from .fluid import sync_fluid_runtime_config, update_fluid_runtime_values
 from .mcw_ble import BLEData
 
@@ -105,7 +105,7 @@ class McwConnectionSwitch(CoordinatorEntity, SwitchEntity):
         """Return device info."""
         return DeviceInfo(
             connections={(CONNECTION_BLUETOOTH, self._address)},
-            name=f"Magic Caster Wand Fluid Effects {self._identifier}",
+            name=format_device_name(self._identifier),
             manufacturer=MANUFACTURER,
         )
 
@@ -172,7 +172,7 @@ class McwSpellTrackingSwitch(CoordinatorEntity, SwitchEntity):
         """Return device info."""
         return DeviceInfo(
             connections={(CONNECTION_BLUETOOTH, self._address)},
-            name=f"Magic Caster Wand Fluid Effects {self._identifier}",
+            name=format_device_name(self._identifier),
             manufacturer=MANUFACTURER,
         )
 
@@ -251,7 +251,7 @@ class McwSpellFeedbackSwitch(SwitchEntity, RestoreEntity):
         """Return device info."""
         return DeviceInfo(
             connections={(CONNECTION_BLUETOOTH, self._address)},
-            name=f"Magic Caster Wand Fluid Effects {self._identifier}",
+            name=format_device_name(self._identifier),
             manufacturer=MANUFACTURER,
         )
 
@@ -318,7 +318,7 @@ class McwFluidRuntimeSwitch(SwitchEntity, RestoreEntity):
         """Return device info."""
         return DeviceInfo(
             connections={(CONNECTION_BLUETOOTH, self._address)},
-            name=f"Magic Caster Wand Fluid Effects {self._identifier}",
+            name=format_device_name(self._identifier),
             manufacturer=MANUFACTURER,
         )
 
@@ -376,7 +376,7 @@ class McwFluidConfigSwitch(SwitchEntity, RestoreEntity):
         """Return device info."""
         return DeviceInfo(
             connections={(CONNECTION_BLUETOOTH, self._address)},
-            name=f"Magic Caster Wand Fluid Effects {self._identifier}",
+            name=format_device_name(self._identifier),
             manufacturer=MANUFACTURER,
         )
 

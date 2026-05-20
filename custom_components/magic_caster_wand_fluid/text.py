@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import CONNECTION_BLUETOOTH, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, MANUFACTURER
+from .const import DOMAIN, MANUFACTURER, format_device_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class McwAliasTextEntity(RestoreText):
         """Return device info."""
         return DeviceInfo(
             connections={(CONNECTION_BLUETOOTH, self._address)},
-            name=f"Magic Caster Wand Fluid Effects {self._identifier}",
+            name=format_device_name(self._identifier),
             manufacturer=MANUFACTURER,
         )
 
