@@ -397,11 +397,11 @@ class McwDevice:
         if maxima:
             return (
                 macro
-                .add_led_hex(LedGroup.POMMEL, "6666FF", 160)
+                .add_led_hex(LedGroup.POMMEL, "777777", 160)
                 .add_delay(80)
-                .add_led_hex(LedGroup.MID_LOWER, "AAAAFF", 160)
+                .add_led_hex(LedGroup.MID_LOWER, "BBBBBB", 160)
                 .add_delay(80)
-                .add_led_hex(LedGroup.MID_UPPER, "DDDDFF", 160)
+                .add_led_hex(LedGroup.MID_UPPER, "EEEEEE", 160)
                 .add_delay(80)
                 .add_led_hex(LedGroup.TIP, "FFFFFF", 220)
                 .add_delay(120)
@@ -423,10 +423,9 @@ class McwDevice:
                 .add_clear()
             )
 
-        r, g, b = self._casting_led_color
         return (
             macro
-            .add_led(LedGroup.TIP, r, g, b, 500)
+            .add_led_hex(LedGroup.TIP, "FFFFFF", 500)
         )
 
     def _spell_color(self, spell_name: str) -> tuple[int, int, int]:

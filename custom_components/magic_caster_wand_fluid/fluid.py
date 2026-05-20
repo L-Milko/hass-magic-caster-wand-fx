@@ -1016,6 +1016,7 @@ class MagicCasterWandFluidActionView(HomeAssistantView):
                 action_message = "Tracking Refreshing"
             elif action == "calibrate_imu":
                 await _async_press_calibration(data, "imu_calibration_entity", "send_imu_calibration")
+                _schedule_tracking_refresh(hass, data, delay=1.0, force=True)
                 action_message = "IMU Calibrated"
             elif action == "calibrate_button":
                 await _async_press_calibration(data, "button_calibration_entity", "send_button_calibration")
@@ -1184,19 +1185,42 @@ def _schedule_tracking_start(
     )
 
 
-def _schedule_tracking_refresh(hass: HomeAssistant, data: dict[str, Any]) -> None:
+def _schedule_tracking_refresh(
+    hass: HomeAssistant,
+    data: dict[str, Any],
+    *,
+    delay: float = 0.0,
+    force: bool = False,
+) -> None:
     """Restart spell tracking after a short off period."""
     now = monotonic()
-    if now - float(data.get("fluid_tracking_refresh_at", 0.0) or 0.0) < 3.0:
+    if not force and now - float(data.get("fluid_tracking_refresh_at", 0.0) or 0.0) < 3.0:
         raise RuntimeError("Tracking refresh is cooling down")
     data["fluid_tracking_refresh_at"] = now
     _cancel_tracking_task(data)
+    if delay > 0:
+        data["fluid_tracking_task"] = hass.async_create_task(
+            _async_refresh_tracking_after_delay(data, delay)
+        )
+        return
     data["fluid_tracking_requested"] = False
     _write_tracking_entity_state(data)
     stream: MagicCasterWandMotionStream | None = data.get("fluid_stream")
     if stream is not None:
         stream.publish_config_update()
     data["fluid_tracking_task"] = hass.async_create_task(_async_refresh_tracking(data))
+
+
+async def _async_refresh_tracking_after_delay(
+    data: dict[str, Any],
+    delay: float,
+) -> None:
+    """Restart spell tracking after a short delay."""
+    try:
+        await asyncio.sleep(delay)
+        await _async_refresh_tracking(data)
+    except asyncio.CancelledError:
+        return
 
 
 async def _async_start_tracking_after_delay(data: dict[str, Any], delay: float) -> None:

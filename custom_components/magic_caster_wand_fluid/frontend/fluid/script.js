@@ -1043,6 +1043,22 @@ function handleWandDetailAction (wand, action) {
                     }
                 }, 2300);
             }
+            if (action === 'calibrate_imu') {
+                setTimeout(() => {
+                    const nextState = getWandRuntimeState(wand.entry_id);
+                    if (nextState.connected === true) {
+                        nextState.tracking = false;
+                        renderWandConnectList();
+                    }
+                }, 1000);
+                setTimeout(() => {
+                    const nextState = getWandRuntimeState(wand.entry_id);
+                    if (nextState.connected === true) {
+                        nextState.tracking = true;
+                        renderWandConnectList();
+                    }
+                }, 3400);
+            }
             setWandActionFeedback(wand.entry_id, action, 'done');
         })
         .catch(() => {
