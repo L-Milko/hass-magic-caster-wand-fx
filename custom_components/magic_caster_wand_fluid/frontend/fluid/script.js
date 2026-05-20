@@ -319,7 +319,8 @@ function getWandRuntimeState (entryId) {
             spell: '',
             loading: false,
             desiredConnected: null,
-            actionFeedback: {}
+            actionFeedback: {},
+            connectAttempt: 0
         });
     }
     return wandRuntimeStates.get(key);
@@ -909,7 +910,10 @@ function renderWandConnectList () {
             const isConnect = action === 'connect';
             state.loading = isConnect;
             state.desiredConnected = isConnect ? true : null;
-            if (action === 'disconnect') {
+            if (isConnect) {
+                state.connectAttempt = (state.connectAttempt || 0) + 1;
+            } else {
+                state.connectAttempt = (state.connectAttempt || 0) + 1;
                 state.connected = false;
                 state.tracking = false;
                 state.drawing = false;
@@ -918,16 +922,11 @@ function renderWandConnectList () {
             }
             renderWandConnectList();
             renderWandPlayerLabels();
-            runWandAction(action, wand.entry_id).catch(() => {}).finally(() => {
-                if (!isConnect) return;
-                setTimeout(() => {
-                    if (state.connected === true) return;
-                    state.loading = false;
-                    state.desiredConnected = null;
-                    renderWandConnectList();
-                    renderWandPlayerLabels();
-                }, 6500);
-            });
+            if (isConnect) {
+                connectWandWithRetries(wand, state.connectAttempt);
+                return;
+            }
+            runWandAction(action, wand.entry_id).catch(() => {});
         });
         const details = card.querySelector('.wand-connect-card-details');
         if (details && state.connected === true) {
@@ -935,6 +934,31 @@ function renderWandConnectList () {
         }
         list.appendChild(card);
     });
+}
+
+function delay (ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function connectWandWithRetries (wand, attemptId) {
+    const state = getWandRuntimeState(wand.entry_id);
+    const maxAttempts = 4;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (state.connectAttempt !== attemptId || state.desiredConnected !== true || state.connected === true) return;
+        try {
+            await runWandAction('connect', wand.entry_id);
+            if (state.connected === true) return;
+        } catch (err) {
+            console.debug('Wand connect attempt failed', err);
+        }
+        if (attempt < maxAttempts - 1) await delay(1200);
+    }
+    if (state.connectAttempt === attemptId && state.connected !== true) {
+        state.loading = false;
+        state.desiredConnected = null;
+        renderWandConnectList();
+        renderWandPlayerLabels();
+    }
 }
 
 function buildWandDetails (wand, state) {
@@ -1187,6 +1211,7 @@ function handleWandConnectionState (data, entryId = window.MCW_FLUID_ENTRY_ID) {
     if (runtime.loading === true && runtime.desiredConnected === connected) {
         runtime.loading = false;
         runtime.desiredConnected = null;
+        runtime.connectAttempt = (runtime.connectAttempt || 0) + 1;
     }
     if (!connected) {
         runtime.previewTipColor = false;

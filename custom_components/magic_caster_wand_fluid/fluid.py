@@ -1144,11 +1144,23 @@ async def _async_fluid_connect_wand(hass: HomeAssistant, data: dict[str, Any]) -
     address = data.get("address")
     if not isinstance(address, str):
         raise RuntimeError("Missing wand address")
-    ble_device = bluetooth.async_ble_device_from_address(hass, address)
-    if ble_device is None:
-        raise RuntimeError("Wand bluetooth device is not currently discoverable")
-    connected = await data["mcw"].connect(ble_device)
-    return connected or data.get("connection_coordinator").data is True
+    last_error: Exception | None = None
+    for attempt in range(4):
+        ble_device = bluetooth.async_ble_device_from_address(hass, address)
+        if ble_device is None:
+            last_error = RuntimeError("Wand bluetooth device is not currently discoverable")
+        else:
+            connected = await data["mcw"].connect(ble_device)
+            if connected or data.get("connection_coordinator").data is True:
+                return True
+            last_error = RuntimeError("Wand connect did not complete")
+        if attempt < 3:
+            await asyncio.sleep(0.75)
+    if data.get("connection_coordinator").data is True:
+        return True
+    if last_error is not None:
+        raise last_error
+    return False
 
 
 def _cancel_tracking_task(data: dict[str, Any]) -> None:
