@@ -62,6 +62,8 @@ class McwDevice:
         self._spell_vibration_enabled: bool = True
         self._spell_learn_mode_enabled: bool = False
         self._spell_light_effect_task: asyncio.Task[None] | None = None
+        self._casting_led_hold_task: asyncio.Task[None] | None = None
+        self._casting_led_hold_generation = 0
         self._learn_spell_listeners: list[Callable[[str, int], None]] = []
         self._learn_spell_event_id = 0
         self._learn_spell_name = "awaiting"
@@ -157,13 +159,14 @@ class McwDevice:
             # Transition: not pressed -> pressed = start tracking
             if button_all and not self._button_all_pressed:
                 _LOGGER.debug("All buttons pressed, starting spell tracking")
-                asyncio.create_task(self._turn_on_casting_led())
+                self._start_casting_led_hold()
                 self._spell_tracker.start()
 
             # Transition: pressed -> not pressed = stop tracking and detect spell
             elif not button_all and self._button_all_pressed:
                 _LOGGER.debug("Buttons released, stopping spell tracking")
                 self._last_cast_release_at = monotonic()
+                self._stop_casting_led_hold()
                 asyncio.create_task(self._turn_off_casting_led())
                 asyncio.create_task(self._async_stop_and_detect_spell())
 
@@ -558,11 +561,39 @@ class McwDevice:
             except Exception as err:
                 _LOGGER.warning("Failed to turn on casting LED: %s", err)
 
+    def _start_casting_led_hold(self) -> None:
+        """Keep the casting tip lit while buttons are held, even over spell macros."""
+        self._casting_led_hold_generation += 1
+        if self._casting_led_hold_task is not None and not self._casting_led_hold_task.done():
+            self._casting_led_hold_task.cancel()
+        self._casting_led_hold_task = asyncio.create_task(
+            self._hold_casting_led(self._casting_led_hold_generation)
+        )
+
+    def _stop_casting_led_hold(self) -> None:
+        """Stop reasserting the casting tip."""
+        self._casting_led_hold_generation += 1
+        if self._casting_led_hold_task is not None and not self._casting_led_hold_task.done():
+            self._casting_led_hold_task.cancel()
+        self._casting_led_hold_task = None
+
+    async def _hold_casting_led(self, generation: int) -> None:
+        """Reassert the tip LED while an active cast is being drawn."""
+        try:
+            await self._turn_on_casting_led()
+            while generation == self._casting_led_hold_generation:
+                await asyncio.sleep(0.22)
+                if not self._button_all_pressed:
+                    return
+                await self._turn_on_casting_led()
+        except asyncio.CancelledError:
+            return
+
     async def _turn_off_casting_led(self) -> None:
         """Turn off the casting LED."""
         if self._mcw:
             try:
-                await self._mcw.led_off()
+                await self._mcw.led_on(LedGroup.TIP, 0, 0, 0)
                 _LOGGER.debug("Casting LED turned off")
             except Exception as err:
                 _LOGGER.warning("Failed to turn off casting LED: %s", err)
@@ -654,6 +685,7 @@ class McwDevice:
         if self.client:
             try:
                 if self.client.is_connected:
+                    self._stop_casting_led_hold()
                     if self._mcw:
                         # Stop IMU streaming before disconnecting
                         try:
