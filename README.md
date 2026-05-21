@@ -4,6 +4,10 @@
 [![License](https://img.shields.io/github/license/L-Milko/hass-magic-caster-wand-fx)](https://github.com/L-Milko/hass-magic-caster-wand-fx/blob/main/LICENSE)
 ![integration usage](https://img.shields.io/badge/dynamic/json?color=41BDF5&logo=home-assistant&label=integration%20usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=%24.magic_caster_wand_fluid.total)
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/L-Milko/hass-magic-caster-wand-fx/main/docs/images/magic_caster_fx_logo.gif" width="160" height="160" alt="Magic Caster Wand FX animated logo"/>
+</p>
+
 Magic Caster Wand FX is a Home Assistant custom integration for Magic Caster Wand Bluetooth control, WebGL fluid spell visuals, finger or mouse spell casting, and multi-wand play.
 
 This fork uses the separate Home Assistant domain `magic_caster_wand_fluid`, so it can be installed without overlapping the original `magic_caster_wand` integration.
