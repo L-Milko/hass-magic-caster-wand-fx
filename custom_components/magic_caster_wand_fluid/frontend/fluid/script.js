@@ -201,6 +201,9 @@ let fluidControlPanel;
 let fluidControlsDirty = false;
 let fluidControlsCollapsed = true;
 let fluidLiveUpdatePending = false;
+let fluidSavedConfigSnapshot = null;
+let fluidPreviousSavedConfig = null;
+let fluidActionFeedbackTimer = null;
 let drawSpellsDrawerCollapsed = false;
 let drawSpellsLastConnected = null;
 let wandConnectPanelOpen = false;
@@ -380,6 +383,9 @@ function loadLocalFluidSettings () {
         if (saved.playModePreviousState && typeof saved.playModePreviousState === 'object') {
             playModePreviousState = saved.playModePreviousState;
         }
+        if (saved.fluidPreviousSavedConfig && typeof saved.fluidPreviousSavedConfig === 'object') {
+            fluidPreviousSavedConfig = { ...saved.fluidPreviousSavedConfig };
+        }
     } catch (err) {}
 }
 
@@ -390,9 +396,34 @@ function saveLocalFluidSettings () {
             fluidControlsCollapsed,
             drawSpellsDrawerCollapsed,
             spellBookAlphabetical,
-            playModePreviousState
+            playModePreviousState,
+            fluidPreviousSavedConfig
         }));
     } catch (err) {}
+}
+
+function getFluidPersistedDefinitions () {
+    return fluidControlDefinitions.filter(definition => definition.panel !== false);
+}
+
+function getFluidConfigSnapshot (source = config) {
+    return Object.fromEntries(
+        getFluidPersistedDefinitions().map(definition => [definition.key, source[definition.key]])
+    );
+}
+
+function cloneFluidConfigSnapshot (snapshot) {
+    return snapshot && typeof snapshot === 'object' ? { ...snapshot } : null;
+}
+
+function rememberSavedFluidConfig (source = config) {
+    fluidSavedConfigSnapshot = getFluidConfigSnapshot(source);
+    updateFluidActionState();
+}
+
+function setFluidControlsDirty (dirty, statusText) {
+    fluidControlsDirty = dirty === true;
+    updateFluidActionState(statusText);
 }
 
 function clampPreviewDrawSpeed (value) {
@@ -432,6 +463,7 @@ function updateFluidControlPanel () {
         }
     });
     updateWandTipControlSection();
+    updateFluidActionState();
 }
 
 function createFluidControlPanel () {
@@ -440,6 +472,8 @@ function createFluidControlPanel () {
     fluidControlPanel.hidden = true;
     fluidControlPanel.innerHTML = '<div class="fluid-controls-header"><span>Fluid Effects</span><label class="play-mode-toggle" title="Show only fluid effects"><span>Play Mode</span><input type="checkbox" data-fluid-action="play-mode"></label><button type="button" class="fluid-collapse-button" data-fluid-action="collapse" title="Collapse controls">-</button></div><div class="fluid-controls-body"></div>';
     const body = fluidControlPanel.querySelector('.fluid-controls-body');
+    const mainSettings = document.createElement('div');
+    mainSettings.className = 'fluid-settings-main';
 
     fluidControlSections.forEach(([section, title]) => {
         const sectionEl = document.createElement('section');
@@ -450,14 +484,15 @@ function createFluidControlPanel () {
             .forEach(definition => {
                 sectionEl.appendChild(createFluidControlRow(definition));
             });
-        body.appendChild(sectionEl);
-        if (section === 'white') body.appendChild(createWandTipControlsSection());
+        mainSettings.appendChild(sectionEl);
+        if (section === 'white') mainSettings.appendChild(createWandTipControlsSection());
     });
 
     const actions = document.createElement('div');
     actions.className = 'fluid-control-actions';
-    actions.innerHTML = '<button type="button" data-fluid-action="save">Save</button><button type="button" data-fluid-action="default">Default</button>';
-    body.appendChild(actions);
+    actions.innerHTML = '<div class="fluid-save-indicator" data-fluid-save-indicator>Saved</div><div class="fluid-action-buttons"><button type="button" data-fluid-action="previous" title="Restore the settings from before the last successful Save">Previously Saved</button><button type="button" data-fluid-action="save">Save</button><button type="button" data-fluid-action="default">Default</button></div>';
+    mainSettings.appendChild(actions);
+    body.appendChild(mainSettings);
     body.appendChild(createExtraFluidSettingsSection());
     document.body.appendChild(fluidControlPanel);
 
@@ -484,7 +519,7 @@ function createFluidControlPanel () {
                 });
             return;
         }
-        fluidControlsDirty = true;
+        setFluidControlsDirty(true, 'Unsaved changes');
     });
 
     fluidControlPanel.addEventListener('click', event => {
@@ -498,12 +533,30 @@ function createFluidControlPanel () {
             updateFluidControlPanel();
             return;
         }
-        if (action === 'default') {
-            fluidControlsDirty = true;
-            applyFluidConfig(defaultFluidConfig);
+        if (action === 'previous') {
+            if (!fluidPreviousSavedConfig) return;
+            applyFluidConfig(fluidPreviousSavedConfig);
+            setFluidControlsDirty(true, 'Previously saved restored - Save to keep');
+            flashFluidActionButton(button, 'done', 'Restored');
             return;
         }
-        saveFluidConfig(action);
+        if (action === 'default') {
+            applyFluidConfig(defaultFluidConfig);
+            setFluidControlsDirty(true, 'Default preview - Save to keep');
+            flashFluidActionButton(button, 'done', 'Defaulted');
+            return;
+        }
+        if (action === 'save') {
+            flashFluidActionButton(button, 'busy', 'Saving...');
+            saveFluidConfig(action)
+                .then(() => {
+                    flashFluidActionButton(button, 'done', 'Saved');
+                })
+                .catch(() => {
+                    flashFluidActionButton(button, 'error', 'Failed');
+                    updateFluidActionState('Save failed - try again');
+                });
+        }
     });
 
     fluidControlPanel.addEventListener('change', event => {
@@ -722,6 +775,54 @@ function readFluidControlValue (input, definition) {
     if (definition.type === 'boolean') return input.checked;
     if (definition.type === 'select') return input.value;
     return Number(input.value);
+}
+
+function updateFluidActionState (statusText) {
+    if (!fluidControlPanel) return;
+    const indicator = fluidControlPanel.querySelector('[data-fluid-save-indicator]');
+    const previousButton = fluidControlPanel.querySelector('[data-fluid-action="previous"]');
+    const saveButton = fluidControlPanel.querySelector('[data-fluid-action="save"]');
+    const text = statusText || (fluidControlsDirty ? 'Unsaved changes - Save to keep' : 'Saved');
+    if (indicator) {
+        indicator.textContent = text;
+        indicator.classList.toggle('is-dirty', fluidControlsDirty === true);
+        indicator.classList.toggle('is-saved', fluidControlsDirty !== true);
+    }
+    if (previousButton) {
+        previousButton.disabled = !fluidPreviousSavedConfig;
+        previousButton.title = fluidPreviousSavedConfig
+            ? 'Restore the settings from before the last successful Save'
+            : 'No previous saved settings stored yet';
+    }
+    if (saveButton) {
+        saveButton.classList.toggle('has-unsaved', fluidControlsDirty === true);
+    }
+}
+
+function flashFluidActionButton (button, phase, text, duration = 1500) {
+    if (!button) return;
+    if (!button.dataset.defaultText) button.dataset.defaultText = button.textContent;
+    if (fluidActionFeedbackTimer) {
+        clearTimeout(fluidActionFeedbackTimer);
+        fluidActionFeedbackTimer = null;
+    }
+    button.classList.remove('is-busy', 'is-done', 'is-error');
+    if (!phase) {
+        button.textContent = button.dataset.defaultText;
+        button.disabled = false;
+        return;
+    }
+    button.textContent = text || button.dataset.defaultText;
+    button.classList.add(`is-${phase}`);
+    if (phase === 'busy') button.disabled = true;
+    if (duration > 0 && phase !== 'busy') {
+        fluidActionFeedbackTimer = setTimeout(() => {
+            button.classList.remove('is-busy', 'is-done', 'is-error');
+            button.textContent = button.dataset.defaultText;
+            button.disabled = false;
+            updateFluidActionState();
+        }, duration);
+    }
 }
 
 function setupSpellGesturePanel () {
@@ -1922,7 +2023,8 @@ async function saveFluidConfig (action, keys) {
     if (!configUrl) return;
     const definitions = Array.isArray(keys)
         ? fluidControlDefinitions.filter(definition => keys.includes(definition.key))
-        : fluidControlDefinitions.filter(definition => definition.panel !== false);
+        : getFluidPersistedDefinitions();
+    const beforeSaveSnapshot = cloneFluidConfigSnapshot(fluidSavedConfigSnapshot);
     const payload = {
         action,
         persist: action === 'save' || action === 'live',
@@ -1936,7 +2038,16 @@ async function saveFluidConfig (action, keys) {
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const body = await response.json();
-    if (action === 'save') fluidControlsDirty = false;
+    if (action === 'save') {
+        if (beforeSaveSnapshot) {
+            fluidPreviousSavedConfig = beforeSaveSnapshot;
+            saveLocalFluidSettings();
+        }
+        applyFluidConfig(body.fluid_config);
+        rememberSavedFluidConfig(body.fluid_config);
+        setFluidControlsDirty(false, 'Saved');
+        return;
+    }
     if (action === 'live' && fluidControlsDirty) {
         applyFluidConfig({
             CASTING_LED_COLORS: body.fluid_config.CASTING_LED_COLORS,
@@ -1988,9 +2099,11 @@ async function fetchFluidConfig () {
     const body = await response.json();
     if (fluidControlsDirty || fluidLiveUpdatePending) return;
     applyFluidConfig(body.fluid_config);
+    rememberSavedFluidConfig(body.fluid_config);
 }
 
 applyHomeAssistantConfig();
+rememberSavedFluidConfig(window.MCW_FLUID_CONFIG || config);
 setupSpellGesturePanel();
 setupDrawSpellsToggle();
 setupWandConnectPanel();
