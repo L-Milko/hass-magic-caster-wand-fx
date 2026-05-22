@@ -63,6 +63,8 @@ DEFAULT_FLUID_DISPLAY_CONFIG = {
     "show_spell_book": False,
     "spell_book_alphabetical": False,
     "auto_scroll_gestures": False,
+    "spell_book_preview_spell": "",
+    "spell_book_preview_event": 0,
 }
 
 SPELL_BOOK_ORDER = [
@@ -1674,6 +1676,17 @@ def update_fluid_display_config(data: dict[str, Any], values: Mapping[str, Any])
     for key in bool_keys:
         if key in values:
             display_config[key] = bool(values[key])
+
+    preview_spell = values.get("spell_book_preview_spell")
+    if preview_spell is not None:
+        display_config["spell_book_preview_spell"] = str(preview_spell)
+
+    preview_event = values.get("spell_book_preview_event")
+    if preview_event is not None:
+        try:
+            display_config["spell_book_preview_event"] = max(0, int(preview_event))
+        except (TypeError, ValueError):
+            display_config["spell_book_preview_event"] = 0
 
 
 def persist_fluid_options(hass: HomeAssistant, data: dict[str, Any]) -> None:

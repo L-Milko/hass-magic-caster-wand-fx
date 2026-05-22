@@ -269,6 +269,8 @@ let spellPathPreviewFrame = null;
 let spellPathPreviewRun = 0;
 let spellPathPreviewProfile = null;
 let spellPathPreviewCancel = null;
+let spellBookPreviewEventId = 0;
+let lastRemoteSpellBookPreviewEventId = 0;
 const wandSpellTitles = new Map();
 
 function normalizeFluidWands (items) {
@@ -447,12 +449,13 @@ function setFluidControlsDirty (dirty, statusText) {
     updateFluidActionState(statusText);
 }
 
-function getFluidDisplayConfigPayload () {
-    return {
+function getFluidDisplayConfigPayload (extra = null) {
+    const payload = {
         show_spell_book: extraFluidSettings.SHOW_SPELL_GESTURES === true,
         spell_book_alphabetical: spellBookAlphabetical === true,
         auto_scroll_gestures: extraFluidSettings.AUTO_SCROLL_GESTURES === true
     };
+    return extra && typeof extra === 'object' ? { ...payload, ...extra } : payload;
 }
 
 function applyFluidDisplayConfig (displayConfig, remote = false) {
@@ -480,15 +483,18 @@ function applyFluidDisplayConfig (displayConfig, remote = false) {
             shouldUpdatePanel = true;
         }
     }
+    const previewSpell = displayConfig.spell_book_preview_spell;
+    const previewEvent = Number(displayConfig.spell_book_preview_event || 0);
     if (!remote || !isTvDisplayMode) saveLocalFluidSettings();
     if (shouldRender) renderSpellGestureList();
     if (shouldUpdatePanel || shouldRender) {
         updateSpellGesturePanel();
         updateExtraFluidSettingsPanel();
     }
+    if (remote && isTvDisplayMode) handleRemoteSpellBookPreview(previewSpell, previewEvent);
 }
 
-async function publishFluidDisplayConfig () {
+async function publishFluidDisplayConfig (extra = null) {
     const configUrl = window.MCW_FLUID_CONFIG_URL;
     if (!configUrl || isTvDisplayMode) return;
     try {
@@ -499,7 +505,7 @@ async function publishFluidDisplayConfig () {
             body: JSON.stringify({
                 action: 'display',
                 persist: false,
-                display_config: getFluidDisplayConfigPayload()
+                display_config: getFluidDisplayConfigPayload(extra)
             })
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -1000,6 +1006,16 @@ function scrollTvSpellBook (amount, smooth) {
     return true;
 }
 
+function publishSpellBookPreview (gesture) {
+    const spellKey = normalizeSpellKey(gesture && gesture.key);
+    if (!spellKey) return;
+    spellBookPreviewEventId += 1;
+    publishFluidDisplayConfig({
+        spell_book_preview_spell: spellKey,
+        spell_book_preview_event: spellBookPreviewEventId
+    });
+}
+
 function renderSpellGestureList () {
     const gestureList = document.getElementById('mcw-spell-gesture-list');
     if (!gestureList) return;
@@ -1031,6 +1047,7 @@ function renderSpellGestureList () {
         if (gesture.path_url && !isTvDisplayMode) {
             card.title = `Preview ${gesture.title || formatSpellName(gesture.key)} fluid path`;
             card.addEventListener('click', () => {
+                publishSpellBookPreview(gesture);
                 playSpellPathPreview(gesture).catch(() => {});
             });
         }
@@ -1509,7 +1526,26 @@ function highlightSpellGesture (spell) {
     }
 }
 
-async function playSpellPathPreview (gesture) {
+function getSpellBookGestureByKey (spell) {
+    const spellKey = normalizeSpellKey(spell);
+    if (!spellKey) return null;
+    return spellBookGestures.find(gesture => normalizeSpellKey(gesture && gesture.key) === spellKey) || null;
+}
+
+function handleRemoteSpellBookPreview (spell, eventId) {
+    const previewEvent = Number(eventId || 0);
+    if (!previewEvent || previewEvent === lastRemoteSpellBookPreviewEventId) return;
+    lastRemoteSpellBookPreviewEventId = previewEvent;
+
+    const gesture = getSpellBookGestureByKey(spell);
+    if (!gesture) return;
+    highlightSpellGesture(gesture.key);
+    if (gesture.path_url) {
+        playSpellPathPreview(gesture, { skipSubmit: true }).catch(() => {});
+    }
+}
+
+async function playSpellPathPreview (gesture, options = {}) {
     if (!gesture || !gesture.path_url) return;
     const runId = ++spellPathPreviewRun;
     stopSpellPathPreview();
@@ -1529,7 +1565,11 @@ async function playSpellPathPreview (gesture) {
     highlightSpellGesture(gesture.key);
     const completed = await animateSpellPathPoints(points, runId, gesture.key);
     if (completed && runId === spellPathPreviewRun) {
-        submitSpellBookSpell(gesture).catch(() => {});
+        if (options.skipSubmit === true) {
+            showFluidSpellName(gesture.key, false, 'button');
+        } else {
+            submitSpellBookSpell(gesture).catch(() => {});
+        }
     }
 }
 
@@ -2255,7 +2295,12 @@ async function fetchFluidConfig () {
 
 applyHomeAssistantConfig();
 rememberSavedFluidConfig(window.MCW_FLUID_CONFIG || config);
-if (isTvDisplayMode) applyFluidDisplayConfig(window.MCW_FLUID_DISPLAY_CONFIG, true);
+const initialDisplayConfig = window.MCW_FLUID_DISPLAY_CONFIG || {};
+spellBookPreviewEventId = Number(initialDisplayConfig.spell_book_preview_event || 0);
+if (isTvDisplayMode) {
+    lastRemoteSpellBookPreviewEventId = spellBookPreviewEventId;
+    applyFluidDisplayConfig(initialDisplayConfig, true);
+}
 setupSpellGesturePanel();
 setupDrawSpellsToggle();
 setupWandConnectPanel();
