@@ -157,6 +157,10 @@
         left: 248px;
       }
 
+      body.tv-mode {
+        --mcw-tv-spell-book-height: clamp(128px, 20vh, 176px);
+      }
+
       body.tv-mode canvas,
       body.tv-mode.gestures-open canvas {
         left: 0;
@@ -183,9 +187,9 @@
       body.tv-mode.gestures-open canvas {
         left: 0;
         right: 0;
-        bottom: 204px;
+        bottom: var(--mcw-tv-spell-book-height);
         width: 100%;
-        height: calc(100% - 204px);
+        height: calc(100% - var(--mcw-tv-spell-book-height));
       }
 
       body.tv-mode.gestures-open .spell {
@@ -199,7 +203,7 @@
         top: auto;
         bottom: 0;
         width: 100%;
-        height: 204px;
+        height: var(--mcw-tv-spell-book-height);
         background: rgba(0, 0, 0, 0.72);
         border-top: 1px solid rgba(255, 255, 255, 0.18);
         border-right: 0;
@@ -212,17 +216,17 @@
 
       body.tv-mode .spell-gesture-list {
         grid-auto-flow: column;
-        grid-auto-columns: 148px;
+        grid-auto-columns: 112px;
         grid-template-columns: none;
-        gap: 10px;
+        gap: 8px;
         overflow-x: auto;
         overflow-y: hidden;
-        padding: 12px 18px 14px;
+        padding: 8px 12px 10px;
       }
 
       body.tv-mode .spell-gesture-card {
-        min-height: 164px;
-        padding: 8px;
+        min-height: calc(var(--mcw-tv-spell-book-height) - 24px);
+        padding: 6px;
         background: rgba(255, 255, 255, 0.062);
       }
 
@@ -231,16 +235,17 @@
       }
 
       body.tv-mode .spell-gesture-card img {
-        width: min(132px, 100%);
-        max-height: 94px;
+        width: min(98px, 100%);
+        max-height: 62px;
       }
 
       body.tv-mode .spell-gesture-media {
-        min-height: 94px;
+        min-height: 62px;
       }
 
       body.tv-mode .spell-gesture-name {
-        font-size: 11px;
+        font-size: 9px;
+        line-height: 1.08;
       }
 
       .spell-gesture-panel {

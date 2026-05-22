@@ -112,8 +112,22 @@ function applyHomeAssistantConfig () {
     applyFluidConfig(window.MCW_FLUID_CONFIG, false);
 }
 
+function getTvPerformanceConfig (nextConfig) {
+    if (!isTvDisplayMode || !nextConfig) return nextConfig;
+
+    const patched = { ...nextConfig };
+    const simResolution = Number(Object.prototype.hasOwnProperty.call(patched, 'SIM_RESOLUTION') ? patched.SIM_RESOLUTION : config.SIM_RESOLUTION);
+    const dyeResolution = Number(Object.prototype.hasOwnProperty.call(patched, 'DYE_RESOLUTION') ? patched.DYE_RESOLUTION : config.DYE_RESOLUTION);
+    patched.SIM_RESOLUTION = Math.min(Number.isFinite(simResolution) ? simResolution : 128, 128);
+    patched.DYE_RESOLUTION = Math.min(Number.isFinite(dyeResolution) ? dyeResolution : 512, 512);
+    patched.BLOOM = false;
+    patched.SUNRAYS = false;
+    return patched;
+}
+
 function applyFluidConfig (nextConfig, refresh = true) {
     if (!nextConfig) return;
+    nextConfig = getTvPerformanceConfig(nextConfig);
 
     if (nextConfig.CASTING_LED_COLORS && Array.isArray(nextConfig.CASTING_LED_COLORS)) {
         Object.keys(castingLedColors).forEach(key => delete castingLedColors[key]);
