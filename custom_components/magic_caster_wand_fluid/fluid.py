@@ -45,6 +45,8 @@ STATIC_URL = f"/{DOMAIN}_fluid"
 GESTURES_STATIC_URL = f"/{DOMAIN}_gestures"
 DEFAULT_PAGE_URL = f"/{DOMAIN}/fluid"
 PAGE_URL = f"/{DOMAIN}/fluid/{{entry_id}}"
+DEFAULT_TV_PAGE_URL = f"/{DOMAIN}/fluid-tv"
+TV_PAGE_URL = f"/{DOMAIN}/fluid-tv/{{entry_id}}"
 EVENTS_URL = f"/{DOMAIN}/fluid/{{entry_id}}/events"
 DEFAULT_STATE_URL = f"/{DOMAIN}/fluid_state"
 STATE_URL = f"/{DOMAIN}/fluid_state/{{entry_id}}"
@@ -175,6 +177,8 @@ async def async_setup_fluid(
         )
         hass.http.register_view(MagicCasterWandFluidDefaultPageView())
         hass.http.register_view(MagicCasterWandFluidPageView())
+        hass.http.register_view(MagicCasterWandFluidDefaultTvPageView())
+        hass.http.register_view(MagicCasterWandFluidTvPageView())
         hass.http.register_view(MagicCasterWandFluidEventsView())
         hass.http.register_view(MagicCasterWandFluidDefaultStateView())
         hass.http.register_view(MagicCasterWandFluidStateView())
@@ -713,13 +717,48 @@ class MagicCasterWandFluidDefaultPageView(HomeAssistantView):
         return _render_fluid_page(hass, entry_id)
 
 
-def _render_fluid_page(hass: HomeAssistant, entry_id: str) -> web.Response:
+class MagicCasterWandFluidTvPageView(HomeAssistantView):
+    """Serve a passive TV display version of the WebGL fluid visualizer."""
+
+    requires_auth = False
+    url = TV_PAGE_URL
+    name = f"api:{DOMAIN}:fluid:tv"
+
+    async def get(self, request: web.Request, entry_id: str) -> web.Response:
+        """Return the TV visualizer HTML."""
+        hass: HomeAssistant = request.app["hass"]
+        return _render_fluid_page(hass, entry_id, tv_mode=True)
+
+
+class MagicCasterWandFluidDefaultTvPageView(HomeAssistantView):
+    """Serve the first configured passive TV display visualizer."""
+
+    requires_auth = False
+    url = DEFAULT_TV_PAGE_URL
+    name = f"api:{DOMAIN}:fluid:tv:default"
+
+    async def get(self, request: web.Request) -> web.Response:
+        """Return the default TV visualizer HTML."""
+        hass: HomeAssistant = request.app["hass"]
+        entry_id = _get_first_entry_key(hass)
+        if entry_id is None:
+            return web.Response(status=404, text="No Magic Caster Wand Fluid Effects entry found")
+
+        return _render_fluid_page(hass, entry_id, tv_mode=True)
+
+
+def _render_fluid_page(
+    hass: HomeAssistant,
+    entry_id: str,
+    tv_mode: bool = False,
+) -> web.Response:
     """Render the WebGL fluid visualizer HTML for an entry key."""
     data = _get_entry_data(hass, entry_id)
     if data is None:
         return web.Response(status=404, text="Unknown Magic Caster Wand entry")
 
     html = hass.data[DOMAIN]["_fluid_index_html"]
+    html = html.replace("__MCW_BODY_CLASS__", "tv-mode" if tv_mode else "")
     html = html.replace("__MCW_ENTRY_ID__", json.dumps(entry_id))
     html = html.replace("__MCW_EVENTS_URL__", json.dumps(EVENTS_URL.format(entry_id=entry_id)))
     html = html.replace("__MCW_STATE_URL__", json.dumps(STATE_URL.format(entry_id=entry_id)))

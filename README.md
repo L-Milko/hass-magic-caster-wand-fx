@@ -56,6 +56,16 @@ aspect_ratio: 75%
 
 The canvas supports wand motion, multiple connected wands, mouse or finger casting, learn mode, a Spell Book, and clickable spell path previews where a path file is bundled.
 
+## TV Display Mode
+
+For a passive TV or projector display, open the TV page instead:
+
+```text
+/magic_caster_wand_fluid/fluid-tv
+```
+
+This version keeps the WebGL fluid canvas full screen and hides the small controls, Spell Book, connection menu, debug text, and settings panel. Use your normal Home Assistant dashboard on a phone, tablet, or laptop to connect wands and change settings; the TV page is just the display.
+
 ## Draw Spell Sensor
 
 The draw-only spell sensor uses the FX name on new installs:

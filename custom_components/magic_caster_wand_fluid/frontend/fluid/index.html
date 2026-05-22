@@ -157,6 +157,30 @@
         left: 248px;
       }
 
+      body.tv-mode canvas,
+      body.tv-mode.gestures-open canvas {
+        left: 0;
+        right: auto;
+        width: 100%;
+        height: 100%;
+        bottom: auto;
+      }
+
+      body.tv-mode .spell,
+      body.tv-mode.gestures-open .spell {
+        left: 50%;
+      }
+
+      body.tv-mode .status,
+      body.tv-mode .debug,
+      body.tv-mode .side-tool-rail,
+      body.tv-mode .spell-gesture-panel,
+      body.tv-mode .wand-connect-panel,
+      body.tv-mode .draw-spells-drawer,
+      body.tv-mode #mcw-fluid-controls {
+        display: none !important;
+      }
+
       .spell-gesture-panel {
         position: fixed;
         left: 0;
@@ -1319,7 +1343,7 @@
       window.MCW_FLUID_WANDS = __MCW_FLUID_WANDS__;
     </script>
   </head>
-  <body>
+  <body class="__MCW_BODY_CLASS__">
     <div class="status" id="mcw-fluid-status">READY</div>
     <div class="spell" id="mcw-fluid-spell"></div>
     <div class="debug" id="mcw-fluid-debug">WAITING FOR WAND DATA</div>
