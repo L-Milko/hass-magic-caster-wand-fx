@@ -2144,11 +2144,12 @@ function setupCastButton () {
     if (!castButton || isTvDisplayMode) return;
 
     const tvUrl = getTvDisplayUrl();
+    castButton.title = 'Open TV View to cast this tab';
     castButton.addEventListener('click', () => {
         startTvCast(tvUrl, castButton).catch(err => {
             console.debug('TV cast failed', err);
             castButton.classList.remove('is-casting');
-            castButton.title = 'Cast unavailable. Open the TV view manually from the browser menu.';
+            castButton.title = 'Open TV View manually from the browser menu';
         });
     });
 }
@@ -2161,30 +2162,14 @@ function getTvDisplayUrl () {
 async function startTvCast (tvUrl, button) {
     if (!tvUrl) return;
     button.classList.add('is-casting');
-    button.title = 'Choose a cast device';
-
-    if (typeof PresentationRequest === 'function') {
-        const request = new PresentationRequest([tvUrl]);
-        request.onconnectionavailable = event => {
-            const connection = event.connection;
-            button.classList.add('is-casting');
-            button.title = 'TV view is casting';
-            connection.onclose = () => {
-                button.classList.remove('is-casting');
-                button.title = 'Cast TV View';
-            };
-            connection.onterminate = connection.onclose;
-        };
-        await request.start();
-        return;
-    }
+    button.title = 'Opening TV View';
 
     const opened = window.open(tvUrl, '_blank', 'noopener');
     if (!opened) throw new Error('Unable to open TV view');
-    button.title = 'TV view opened';
+    button.title = 'TV View opened. Use your browser or phone cast controls.';
     setTimeout(() => {
         button.classList.remove('is-casting');
-        button.title = 'Cast TV View';
+        button.title = 'Open TV View to cast this tab';
     }, 2500);
 }
 
