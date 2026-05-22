@@ -174,11 +174,73 @@
       body.tv-mode .status,
       body.tv-mode .debug,
       body.tv-mode .side-tool-rail,
-      body.tv-mode .spell-gesture-panel,
       body.tv-mode .wand-connect-panel,
       body.tv-mode .draw-spells-drawer,
       body.tv-mode #mcw-fluid-controls {
         display: none !important;
+      }
+
+      body.tv-mode.gestures-open canvas {
+        left: 0;
+        right: 0;
+        bottom: 204px;
+        width: 100%;
+        height: calc(100% - 204px);
+      }
+
+      body.tv-mode.gestures-open .spell {
+        left: 50%;
+      }
+
+      body.tv-mode.gestures-open .spell-gesture-panel {
+        display: flex;
+        left: 0;
+        right: 0;
+        top: auto;
+        bottom: 0;
+        width: 100%;
+        height: 204px;
+        background: rgba(0, 0, 0, 0.72);
+        border-top: 1px solid rgba(255, 255, 255, 0.18);
+        border-right: 0;
+        backdrop-filter: blur(10px);
+      }
+
+      body.tv-mode .spell-gesture-header {
+        display: none;
+      }
+
+      body.tv-mode .spell-gesture-list {
+        grid-auto-flow: column;
+        grid-auto-columns: 148px;
+        grid-template-columns: none;
+        gap: 10px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 12px 18px 14px;
+      }
+
+      body.tv-mode .spell-gesture-card {
+        min-height: 164px;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.062);
+      }
+
+      body.tv-mode .spell-gesture-card.has-path {
+        cursor: default;
+      }
+
+      body.tv-mode .spell-gesture-card img {
+        width: min(132px, 100%);
+        max-height: 94px;
+      }
+
+      body.tv-mode .spell-gesture-media {
+        min-height: 94px;
+      }
+
+      body.tv-mode .spell-gesture-name {
+        font-size: 11px;
       }
 
       .spell-gesture-panel {
@@ -1405,6 +1467,7 @@
       window.MCW_FLUID_STATIC_URL = "__MCW_STATIC_URL__";
       window.MCW_FLUID_DEFAULT_STATE_URL = "/magic_caster_wand_fluid/fluid_state";
       window.MCW_FLUID_CONFIG = __MCW_FLUID_CONFIG__;
+      window.MCW_FLUID_DISPLAY_CONFIG = __MCW_FLUID_DISPLAY_CONFIG__;
       window.MCW_FLUID_GESTURES = __MCW_FLUID_GESTURES__;
       window.MCW_FLUID_WANDS = __MCW_FLUID_WANDS__;
     </script>

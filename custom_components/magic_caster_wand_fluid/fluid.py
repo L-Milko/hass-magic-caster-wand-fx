@@ -59,6 +59,11 @@ RAW_IMU_ACTIVE_THRESHOLD = 0.08
 RAW_IMU_GYRO_SCALE = 0.025
 RAW_IMU_ACCEL_SCALE = 0.012
 MAX_POINTER_STEP = 0.08
+DEFAULT_FLUID_DISPLAY_CONFIG = {
+    "show_spell_book": False,
+    "spell_book_alphabetical": False,
+    "auto_scroll_gestures": False,
+}
 
 SPELL_BOOK_ORDER = [
     "colovaria",
@@ -208,6 +213,7 @@ async def async_setup_fluid(
             data.get(switch_key, switch["default"]),
         )
     data["fluid_config"] = build_fluid_config(entry.options)
+    data.setdefault("fluid_display_config", dict(DEFAULT_FLUID_DISPLAY_CONFIG))
     sync_fluid_runtime_config(data)
 
     stream = MagicCasterWandMotionStream(
@@ -524,6 +530,12 @@ class MagicCasterWandMotionStream:
             ),
             **self._regular_spell_fields(),
             "fluid_config": dict(self._fluid_config),
+            "display_config": dict(
+                self._runtime_data.get(
+                    "fluid_display_config",
+                    DEFAULT_FLUID_DISPLAY_CONFIG,
+                )
+            ),
             "ts": time(),
         }
 
@@ -575,6 +587,9 @@ class MagicCasterWandMotionStream:
         payload["has_motion"] = has_recent_motion
         payload["status_detail"] = self._status_detail(payload)
         payload["fluid_config"] = dict(self._fluid_config)
+        payload["display_config"] = dict(
+            self._runtime_data.get("fluid_display_config", DEFAULT_FLUID_DISPLAY_CONFIG)
+        )
         payload["server_ts"] = time()
         return payload
 
@@ -778,6 +793,10 @@ def _render_fluid_page(
         "__MCW_FLUID_CONFIG__",
         json.dumps(data.get("fluid_config", build_fluid_config({}))),
     )
+    html = html.replace(
+        "__MCW_FLUID_DISPLAY_CONFIG__",
+        json.dumps(data.get("fluid_display_config", DEFAULT_FLUID_DISPLAY_CONFIG)),
+    )
     return web.Response(text=html, content_type="text/html")
 
 
@@ -888,7 +907,14 @@ class MagicCasterWandFluidConfigView(HomeAssistantView):
             )
 
         sync_fluid_runtime_config(data)
-        return web.json_response({"fluid_config": _json_safe(data["fluid_config"])})
+        return web.json_response(
+            {
+                "fluid_config": _json_safe(data["fluid_config"]),
+                "display_config": _json_safe(
+                    data.get("fluid_display_config", DEFAULT_FLUID_DISPLAY_CONFIG)
+                ),
+            }
+        )
 
     async def post(self, request: web.Request, entry_id: str) -> web.Response:
         """Update and optionally persist fluid configuration."""
@@ -906,6 +932,7 @@ class MagicCasterWandFluidConfigView(HomeAssistantView):
             data["fluid_config"].update(build_fluid_config({}))
         else:
             update_fluid_runtime_values(data, body.get("config", {}))
+        update_fluid_display_config(data, body.get("display_config", {}))
 
         sync_fluid_runtime_config(data)
         if body.get("persist") or action == "save":
@@ -915,7 +942,14 @@ class MagicCasterWandFluidConfigView(HomeAssistantView):
         if stream is not None:
             stream.publish_config_update()
 
-        return web.json_response({"fluid_config": _json_safe(data["fluid_config"])})
+        return web.json_response(
+            {
+                "fluid_config": _json_safe(data["fluid_config"]),
+                "display_config": _json_safe(
+                    data.get("fluid_display_config", DEFAULT_FLUID_DISPLAY_CONFIG)
+                ),
+            }
+        )
 
 
 class MagicCasterWandFluidSpellView(HomeAssistantView):
@@ -1621,6 +1655,25 @@ def update_fluid_runtime_values(data: dict[str, Any], values: Mapping[str, Any])
         numeric = _finite_float(value, option["default"])
         numeric = max(option["min"], min(option["max"], numeric))
         config[js_key] = int(numeric) if option_type is int else numeric
+
+
+def update_fluid_display_config(data: dict[str, Any], values: Mapping[str, Any]) -> None:
+    """Apply browser updates for shared display-only page preferences."""
+    if not isinstance(values, Mapping):
+        return
+
+    display_config = data.setdefault(
+        "fluid_display_config",
+        dict(DEFAULT_FLUID_DISPLAY_CONFIG),
+    )
+    bool_keys = {
+        "show_spell_book",
+        "spell_book_alphabetical",
+        "auto_scroll_gestures",
+    }
+    for key in bool_keys:
+        if key in values:
+            display_config[key] = bool(values[key])
 
 
 def persist_fluid_options(hass: HomeAssistant, data: dict[str, Any]) -> None:

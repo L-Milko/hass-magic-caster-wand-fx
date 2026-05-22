@@ -9,6 +9,7 @@ if (promoPopup && isMobile()) {
 // Simulation section default
 
 const canvas = document.getElementsByTagName('canvas')[0];
+const isTvDisplayMode = document.body.classList.contains('tv-mode');
 resizeCanvas();
 
 const castingLedColors = {
@@ -426,6 +427,67 @@ function setFluidControlsDirty (dirty, statusText) {
     updateFluidActionState(statusText);
 }
 
+function getFluidDisplayConfigPayload () {
+    return {
+        show_spell_book: extraFluidSettings.SHOW_SPELL_GESTURES === true,
+        spell_book_alphabetical: spellBookAlphabetical === true,
+        auto_scroll_gestures: extraFluidSettings.AUTO_SCROLL_GESTURES === true
+    };
+}
+
+function applyFluidDisplayConfig (displayConfig, remote = false) {
+    if (!displayConfig || typeof displayConfig !== 'object') return;
+    let shouldRender = false;
+    let shouldUpdatePanel = false;
+    if (Object.prototype.hasOwnProperty.call(displayConfig, 'show_spell_book')) {
+        const nextOpen = displayConfig.show_spell_book === true;
+        if (extraFluidSettings.SHOW_SPELL_GESTURES !== nextOpen) {
+            extraFluidSettings.SHOW_SPELL_GESTURES = nextOpen;
+            shouldUpdatePanel = true;
+        }
+    }
+    if (Object.prototype.hasOwnProperty.call(displayConfig, 'spell_book_alphabetical')) {
+        const nextAlphabetical = displayConfig.spell_book_alphabetical === true;
+        if (spellBookAlphabetical !== nextAlphabetical) {
+            spellBookAlphabetical = nextAlphabetical;
+            shouldRender = true;
+        }
+    }
+    if (Object.prototype.hasOwnProperty.call(displayConfig, 'auto_scroll_gestures')) {
+        const nextAutoScroll = displayConfig.auto_scroll_gestures === true;
+        if (extraFluidSettings.AUTO_SCROLL_GESTURES !== nextAutoScroll) {
+            extraFluidSettings.AUTO_SCROLL_GESTURES = nextAutoScroll;
+            shouldUpdatePanel = true;
+        }
+    }
+    if (!remote || !isTvDisplayMode) saveLocalFluidSettings();
+    if (shouldRender) renderSpellGestureList();
+    if (shouldUpdatePanel || shouldRender) {
+        updateSpellGesturePanel();
+        updateExtraFluidSettingsPanel();
+    }
+}
+
+async function publishFluidDisplayConfig () {
+    const configUrl = window.MCW_FLUID_CONFIG_URL;
+    if (!configUrl || isTvDisplayMode) return;
+    try {
+        const response = await fetch(configUrl, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'display',
+                persist: false,
+                display_config: getFluidDisplayConfigPayload()
+            })
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch (err) {
+        console.debug('Failed to publish fluid display config', err);
+    }
+}
+
 function clampPreviewDrawSpeed (value) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return 1;
@@ -692,6 +754,7 @@ function createExtraFluidSettingsSection () {
             updateSpellGesturePanel();
             updateWandConnectPanel(wandConnectLastConnected === true);
             updateExtraFluidSettingsPanel();
+            if (key === 'HIDE_SPELL_BOOK_TAB') publishFluidDisplayConfig();
             return;
         }
 
@@ -835,6 +898,7 @@ function setupSpellGesturePanel () {
             spellBookAlphabetical = !spellBookAlphabetical;
             saveLocalFluidSettings();
             renderSpellGestureList();
+            publishFluidDisplayConfig();
         });
     }
     renderSpellGestureList();
@@ -846,6 +910,7 @@ function setupSpellGesturePanel () {
             extraFluidSettings.AUTO_SCROLL_GESTURES = autoScrollInput.checked;
             saveLocalFluidSettings();
             updateExtraFluidSettingsPanel();
+            publishFluidDisplayConfig();
         });
     }
     updateSpellGesturePanel();
@@ -879,7 +944,7 @@ function renderSpellGestureList () {
         card.classList.toggle('has-path', Boolean(gesture.path_url));
         const gestureKey = normalizeSpellKey(gesture.key);
         card.classList.toggle('is-avada', gestureKey === 'avada_kedavra');
-        if (gesture.path_url) {
+        if (gesture.path_url && !isTvDisplayMode) {
             card.title = `Preview ${gesture.title || formatSpellName(gesture.key)} fluid path`;
             card.addEventListener('click', () => {
                 playSpellPathPreview(gesture).catch(() => {});
@@ -903,7 +968,7 @@ function renderSpellGestureList () {
 }
 
 function updateSpellGesturePanel () {
-    const spellBookHidden = extraFluidSettings.HIDE_SPELL_BOOK_TAB === true || extraFluidSettings.PLAY_MODE === true;
+    const spellBookHidden = !isTvDisplayMode && (extraFluidSettings.HIDE_SPELL_BOOK_TAB === true || extraFluidSettings.PLAY_MODE === true);
     const isOpen = extraFluidSettings.SHOW_SPELL_GESTURES === true && !spellBookHidden;
     document.body.classList.toggle('gestures-open', isOpen);
     document.body.classList.toggle('hide-spell-book-tab', extraFluidSettings.HIDE_SPELL_BOOK_TAB === true);
@@ -1965,6 +2030,7 @@ function setupDrawSpellsToggle () {
             saveLocalFluidSettings();
             updateSpellGesturePanel();
             updateDrawSpellsToggle();
+            publishFluidDisplayConfig();
         });
     }
 }
@@ -2099,15 +2165,18 @@ async function fetchFluidConfig () {
     const body = await response.json();
     if (fluidControlsDirty || fluidLiveUpdatePending) return;
     applyFluidConfig(body.fluid_config);
+    applyFluidDisplayConfig(body.display_config, true);
     rememberSavedFluidConfig(body.fluid_config);
 }
 
 applyHomeAssistantConfig();
 rememberSavedFluidConfig(window.MCW_FLUID_CONFIG || config);
+if (isTvDisplayMode) applyFluidDisplayConfig(window.MCW_FLUID_DISPLAY_CONFIG, true);
 setupSpellGesturePanel();
 setupDrawSpellsToggle();
 setupWandConnectPanel();
 updateOverlayVisibility();
+if (!isTvDisplayMode) publishFluidDisplayConfig();
 
 let pointers = [];
 let splatStack = [];
@@ -3530,6 +3599,7 @@ function connectWandFluidStream () {
     const handlePayload = data => {
         lastBackendMessage = Date.now();
         if (data.fluid_config && !fluidControlsDirty && !fluidLiveUpdatePending) applyFluidConfig(data.fluid_config);
+        if (data.display_config) applyFluidDisplayConfig(data.display_config, true);
         wandConnected = data.connected === true;
         updateDrawSpellsDrawer(wandConnected);
         handleWandConnectionState(data, primaryEntryId);
