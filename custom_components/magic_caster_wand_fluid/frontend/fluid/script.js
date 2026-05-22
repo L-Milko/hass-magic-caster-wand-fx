@@ -118,8 +118,14 @@ function getTvPerformanceConfig (nextConfig) {
     const patched = { ...nextConfig };
     const simResolution = Number(Object.prototype.hasOwnProperty.call(patched, 'SIM_RESOLUTION') ? patched.SIM_RESOLUTION : config.SIM_RESOLUTION);
     const dyeResolution = Number(Object.prototype.hasOwnProperty.call(patched, 'DYE_RESOLUTION') ? patched.DYE_RESOLUTION : config.DYE_RESOLUTION);
-    patched.SIM_RESOLUTION = Math.min(Number.isFinite(simResolution) ? simResolution : 128, 128);
-    patched.DYE_RESOLUTION = Math.min(Number.isFinite(dyeResolution) ? dyeResolution : 512, 512);
+    const pressureIterations = Number(Object.prototype.hasOwnProperty.call(patched, 'PRESSURE_ITERATIONS') ? patched.PRESSURE_ITERATIONS : config.PRESSURE_ITERATIONS);
+    const splatForce = Number(Object.prototype.hasOwnProperty.call(patched, 'SPLAT_FORCE') ? patched.SPLAT_FORCE : config.SPLAT_FORCE);
+    patched.SIM_RESOLUTION = Math.min(Number.isFinite(simResolution) ? simResolution : 64, 64);
+    patched.DYE_RESOLUTION = Math.min(Number.isFinite(dyeResolution) ? dyeResolution : 256, 256);
+    patched.PRESSURE_ITERATIONS = Math.min(Number.isFinite(pressureIterations) ? pressureIterations : 1, 1);
+    patched.SPLAT_FORCE = Math.min(Number.isFinite(splatForce) ? splatForce : 2500, 2500);
+    patched.CURL = 0;
+    patched.SHADING = false;
     patched.BLOOM = false;
     patched.SUNRAYS = false;
     return patched;
@@ -928,6 +934,70 @@ function setupSpellGesturePanel () {
         });
     }
     updateSpellGesturePanel();
+    setupTvSpellBookScrolling();
+}
+
+function setupTvSpellBookScrolling () {
+    if (!isTvDisplayMode || setupTvSpellBookScrolling.done) return;
+    setupTvSpellBookScrolling.done = true;
+
+    const gestureList = document.getElementById('mcw-spell-gesture-list');
+    if (gestureList) {
+        gestureList.addEventListener('wheel', event => {
+            const amount = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+            if (!amount || !scrollTvSpellBook(amount, false)) return;
+            event.preventDefault();
+        }, { passive: false });
+    }
+
+    window.addEventListener('keydown', event => {
+        const scrollAmount = getTvSpellBookKeyScroll(event.key);
+        if (!scrollAmount) return;
+        if (!scrollTvSpellBook(scrollAmount, true)) return;
+        event.preventDefault();
+    });
+}
+
+function getTvSpellBookKeyScroll (key) {
+    switch (key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+            return 150;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+            return -150;
+        case 'PageDown':
+            return 450;
+        case 'PageUp':
+            return -450;
+        case 'Home':
+            return Number.NEGATIVE_INFINITY;
+        case 'End':
+            return Number.POSITIVE_INFINITY;
+        default:
+            return 0;
+    }
+}
+
+function scrollTvSpellBook (amount, smooth) {
+    if (!isTvDisplayMode || extraFluidSettings.AUTO_SCROLL_GESTURES === true) return false;
+    if (extraFluidSettings.SHOW_SPELL_GESTURES !== true) return false;
+    const gestureList = document.getElementById('mcw-spell-gesture-list');
+    if (!gestureList) return false;
+
+    if (amount === Number.NEGATIVE_INFINITY) {
+        if (gestureList.scrollTo) gestureList.scrollTo({ left: 0, behavior: smooth ? 'smooth' : 'auto' });
+        else gestureList.scrollLeft = 0;
+        return true;
+    }
+    if (amount === Number.POSITIVE_INFINITY) {
+        if (gestureList.scrollTo) gestureList.scrollTo({ left: gestureList.scrollWidth, behavior: smooth ? 'smooth' : 'auto' });
+        else gestureList.scrollLeft = gestureList.scrollWidth;
+        return true;
+    }
+    if (gestureList.scrollBy) gestureList.scrollBy({ left: amount, behavior: smooth ? 'smooth' : 'auto' });
+    else gestureList.scrollLeft += amount;
+    return true;
 }
 
 function renderSpellGestureList () {
@@ -3223,10 +3293,17 @@ const fluidSpellDisplayMs = 10000;
 connectWandFluidStream();
 
 let lastUpdateTime = Date.now();
+let lastTvFrameTime = 0;
 let colorUpdateTimer = 0.0;
 update();
 
 function update () {
+    requestAnimationFrame(update);
+    if (isTvDisplayMode) {
+        const now = Date.now();
+        if (now - lastTvFrameTime < 50) return;
+        lastTvFrameTime = now;
+    }
     const dt = calcDeltaTime();
     if (resizeCanvas()) {
         initFramebuffers();
@@ -3238,7 +3315,6 @@ function update () {
     if (!config.PAUSED)
         step(dt);
     render(null);
-    requestAnimationFrame(update);
 }
 
 function calcDeltaTime () {
@@ -4493,7 +4569,8 @@ function getTextureScale (texture, width, height) {
 
 function scaleByPixelRatio (input) {
     let pixelRatio = window.devicePixelRatio || 1;
-    return Math.floor(input * pixelRatio);
+    if (isTvDisplayMode) pixelRatio = Math.min(pixelRatio, 0.75);
+    return Math.max(1, Math.floor(input * pixelRatio));
 }
 
 function hashCode (s) {
