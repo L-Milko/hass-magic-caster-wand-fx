@@ -112,28 +112,8 @@ function applyHomeAssistantConfig () {
     applyFluidConfig(window.MCW_FLUID_CONFIG, false);
 }
 
-function getTvPerformanceConfig (nextConfig) {
-    if (!isTvDisplayMode || !nextConfig) return nextConfig;
-
-    const patched = { ...nextConfig };
-    const simResolution = Number(Object.prototype.hasOwnProperty.call(patched, 'SIM_RESOLUTION') ? patched.SIM_RESOLUTION : config.SIM_RESOLUTION);
-    const dyeResolution = Number(Object.prototype.hasOwnProperty.call(patched, 'DYE_RESOLUTION') ? patched.DYE_RESOLUTION : config.DYE_RESOLUTION);
-    const pressureIterations = Number(Object.prototype.hasOwnProperty.call(patched, 'PRESSURE_ITERATIONS') ? patched.PRESSURE_ITERATIONS : config.PRESSURE_ITERATIONS);
-    const splatForce = Number(Object.prototype.hasOwnProperty.call(patched, 'SPLAT_FORCE') ? patched.SPLAT_FORCE : config.SPLAT_FORCE);
-    patched.SIM_RESOLUTION = Math.min(Number.isFinite(simResolution) ? simResolution : 64, 64);
-    patched.DYE_RESOLUTION = Math.min(Number.isFinite(dyeResolution) ? dyeResolution : 256, 256);
-    patched.PRESSURE_ITERATIONS = Math.min(Number.isFinite(pressureIterations) ? pressureIterations : 1, 1);
-    patched.SPLAT_FORCE = Math.min(Number.isFinite(splatForce) ? splatForce : 2500, 2500);
-    patched.CURL = 0;
-    patched.SHADING = false;
-    patched.BLOOM = false;
-    patched.SUNRAYS = false;
-    return patched;
-}
-
 function applyFluidConfig (nextConfig, refresh = true) {
     if (!nextConfig) return;
-    nextConfig = getTvPerformanceConfig(nextConfig);
 
     if (nextConfig.CASTING_LED_COLORS && Array.isArray(nextConfig.CASTING_LED_COLORS)) {
         Object.keys(castingLedColors).forEach(key => delete castingLedColors[key]);
@@ -2159,6 +2139,55 @@ function setupDrawSpellsToggle () {
     }
 }
 
+function setupCastButton () {
+    const castButton = document.getElementById('mcw-cast-tab');
+    if (!castButton || isTvDisplayMode) return;
+
+    const tvUrl = getTvDisplayUrl();
+    castButton.addEventListener('click', () => {
+        startTvCast(tvUrl, castButton).catch(err => {
+            console.debug('TV cast failed', err);
+            castButton.classList.remove('is-casting');
+            castButton.title = 'Cast unavailable. Open the TV view manually from the browser menu.';
+        });
+    });
+}
+
+function getTvDisplayUrl () {
+    const tvUrl = window.MCW_FLUID_TV_URL || '/magic_caster_wand_fluid/fluid-tv';
+    return new URL(tvUrl, window.location.href).href;
+}
+
+async function startTvCast (tvUrl, button) {
+    if (!tvUrl) return;
+    button.classList.add('is-casting');
+    button.title = 'Choose a cast device';
+
+    if (typeof PresentationRequest === 'function') {
+        const request = new PresentationRequest([tvUrl]);
+        request.onconnectionavailable = event => {
+            const connection = event.connection;
+            button.classList.add('is-casting');
+            button.title = 'TV view is casting';
+            connection.onclose = () => {
+                button.classList.remove('is-casting');
+                button.title = 'Cast TV View';
+            };
+            connection.onterminate = connection.onclose;
+        };
+        await request.start();
+        return;
+    }
+
+    const opened = window.open(tvUrl, '_blank', 'noopener');
+    if (!opened) throw new Error('Unable to open TV view');
+    button.title = 'TV view opened';
+    setTimeout(() => {
+        button.classList.remove('is-casting');
+        button.title = 'Cast TV View';
+    }, 2500);
+}
+
 function setupWandConnectPanel () {
     const tab = document.getElementById('mcw-wand-connect-tab');
     const toggle = document.getElementById('mcw-wand-connect-toggle');
@@ -2303,6 +2332,7 @@ if (isTvDisplayMode) {
 }
 setupSpellGesturePanel();
 setupDrawSpellsToggle();
+setupCastButton();
 setupWandConnectPanel();
 updateOverlayVisibility();
 if (!isTvDisplayMode) publishFluidDisplayConfig();
@@ -3338,17 +3368,10 @@ const fluidSpellDisplayMs = 10000;
 connectWandFluidStream();
 
 let lastUpdateTime = Date.now();
-let lastTvFrameTime = 0;
 let colorUpdateTimer = 0.0;
 update();
 
 function update () {
-    requestAnimationFrame(update);
-    if (isTvDisplayMode) {
-        const now = Date.now();
-        if (now - lastTvFrameTime < 50) return;
-        lastTvFrameTime = now;
-    }
     const dt = calcDeltaTime();
     if (resizeCanvas()) {
         initFramebuffers();
@@ -3360,6 +3383,7 @@ function update () {
     if (!config.PAUSED)
         step(dt);
     render(null);
+    requestAnimationFrame(update);
 }
 
 function calcDeltaTime () {
@@ -4614,7 +4638,6 @@ function getTextureScale (texture, width, height) {
 
 function scaleByPixelRatio (input) {
     let pixelRatio = window.devicePixelRatio || 1;
-    if (isTvDisplayMode) pixelRatio = Math.min(pixelRatio, 0.75);
     return Math.max(1, Math.floor(input * pixelRatio));
 }
 

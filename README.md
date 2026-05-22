@@ -64,7 +64,9 @@ For a passive TV or projector display, open the TV page instead:
 /magic_caster_wand_fluid/fluid-tv
 ```
 
-This version keeps the WebGL fluid canvas full screen and hides the small controls, connection menu, debug text, and settings panel. It also uses a lighter local WebGL profile for TV browsers. Use your normal Home Assistant dashboard on a phone, tablet, or laptop to connect wands, change settings, and toggle the Spell Book. When the Spell Book is opened from the interactive page, the TV page shows a compact bottom Spell Book strip using the same order, A-Z sort, and auto-scroll setting. If Auto Scroll is off, the TV Spell Book can be moved with remote arrow/page keys or a wheel/trackpad scroll.
+This version keeps the WebGL fluid canvas full screen and hides the small controls, connection menu, debug text, and settings panel. Use your normal Home Assistant dashboard on a phone, tablet, or laptop to connect wands, change settings, and toggle the Spell Book. When the Spell Book is opened from the interactive page, the TV page shows a compact bottom Spell Book strip using the same order, A-Z sort, and auto-scroll setting. If Auto Scroll is off, the TV Spell Book can be moved with remote arrow/page keys or a wheel/trackpad scroll.
+
+The main fluid iframe also includes a Cast TV View button. Where the browser supports the Presentation API, it opens the native cast/device picker for the TV display page. If the browser cannot expose that picker, it opens the TV page in a new tab so you can use your browser or phone casting controls.
 
 ## Draw Spell Sensor
 
