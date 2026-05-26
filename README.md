@@ -258,7 +258,7 @@ These are the spells currently listed in the iframe Spell Book. This table is a 
   </tr>
   <tr>
     <td align="center" valign="top" width="150" height="156"><b>The Stretching Jinx</b><br/><img src="https://raw.githubusercontent.com/L-Milko/hass-magic-caster-wand-fx/main/docs/gesture_thumbnails/the_stretching_jinx.png" width="108" height="108" draggable="false" style="pointer-events: none;" alt="The Stretching Jinx spell gesture"/></td>
-    <td align="center" valign="top" width="150" height="156"><b>Avada Kedavra</b><br/><img src="https://raw.githubusercontent.com/L-Milko/hass-magic-caster-wand-fx/main/docs/gesture_thumbnails/avada_kedavra.png" width="108" height="108" draggable="false" style="pointer-events: none;" alt="Avada Kedavra spell gesture"/></td>
+    <td align="center" valign="top" width="150" height="156"><b>Avada Kedavra</b><br/><img src="https://raw.githubusercontent.com/L-Milko/hass-magic-caster-wand-fx/main/docs/gesture_thumbnails/avada_kedavra.png" height="108" draggable="false" style="pointer-events: none;" alt="Avada Kedavra spell gesture"/></td>
     <td width="150" height="156"></td>
     <td width="150" height="156"></td>
   </tr>
