@@ -497,7 +497,6 @@
       body.hide-wand-connect-tab .wand-connect-tab,
       body.play-mode .spell-book-tab,
       body.play-mode .wand-connect-tab,
-      body.play-mode .cast-tab,
       body.play-mode .wand-connect-panel,
       body.play-mode .spell-gesture-panel,
       body.play-mode .status,
@@ -509,43 +508,6 @@
       .side-tool-symbol {
         font: 700 22px/1 "Segoe UI Symbol", "Noto Sans Symbols", system-ui, sans-serif;
         transform: translateY(-1px);
-      }
-
-      .cast-icon {
-        position: relative;
-        width: 22px;
-        height: 16px;
-        border: 2px solid currentColor;
-        border-radius: 3px;
-        opacity: 0.9;
-      }
-
-      .cast-icon::before,
-      .cast-icon::after {
-        content: "";
-        position: absolute;
-        left: -2px;
-        bottom: -2px;
-        border: 2px solid currentColor;
-        border-top-color: transparent;
-        border-right-color: transparent;
-        border-radius: 0 0 0 10px;
-      }
-
-      .cast-icon::before {
-        width: 7px;
-        height: 7px;
-      }
-
-      .cast-icon::after {
-        width: 12px;
-        height: 12px;
-        opacity: 0.65;
-      }
-
-      .cast-tab.is-casting {
-        color: #9ee8ff;
-        box-shadow: 0 8px 26px rgba(0, 0, 0, 0.38), 0 0 18px rgba(88, 204, 255, 0.28);
       }
 
       .wand-connect-panel {
@@ -1508,7 +1470,6 @@
       window.MCW_FLUID_CONFIG_URL = __MCW_CONFIG_URL__;
       window.MCW_FLUID_SPELL_URL = __MCW_SPELL_URL__;
       window.MCW_FLUID_ACTION_URL = __MCW_ACTION_URL__;
-      window.MCW_FLUID_TV_URL = __MCW_TV_URL__;
       window.MCW_FLUID_STATIC_URL = "__MCW_STATIC_URL__";
       window.MCW_FLUID_DEFAULT_STATE_URL = "/magic_caster_wand_fluid/fluid_state";
       window.MCW_FLUID_CONFIG = __MCW_FLUID_CONFIG__;
@@ -1528,9 +1489,6 @@
       </button>
       <button type="button" class="side-tool-button wand-connect-tab" id="mcw-wand-connect-tab" title="Wand Connection" aria-label="Wand Connection">
         <span class="side-tool-symbol" aria-hidden="true">&#5842;</span>
-      </button>
-      <button type="button" class="side-tool-button cast-tab" id="mcw-cast-tab" title="Open TV View" aria-label="Open TV View">
-        <span class="cast-icon" aria-hidden="true"></span>
       </button>
     </div>
     <div class="wand-connect-panel" id="mcw-wand-connect-panel" aria-label="Wand connection controls">

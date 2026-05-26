@@ -782,7 +782,6 @@ def _render_fluid_page(
     html = html.replace("__MCW_CONFIG_URL__", json.dumps(CONFIG_URL.format(entry_id=entry_id)))
     html = html.replace("__MCW_SPELL_URL__", json.dumps(SPELL_URL.format(entry_id=entry_id)))
     html = html.replace("__MCW_ACTION_URL__", json.dumps(ACTION_URL.format(entry_id=entry_id)))
-    html = html.replace("__MCW_TV_URL__", json.dumps(TV_PAGE_URL.format(entry_id=entry_id)))
     html = html.replace("__MCW_STATIC_URL__", STATIC_URL)
     html = html.replace(
         "__MCW_FLUID_GESTURES__",

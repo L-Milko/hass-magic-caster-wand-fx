@@ -2139,40 +2139,6 @@ function setupDrawSpellsToggle () {
     }
 }
 
-function setupCastButton () {
-    const castButton = document.getElementById('mcw-cast-tab');
-    if (!castButton || isTvDisplayMode) return;
-
-    const tvUrl = getTvDisplayUrl();
-    castButton.title = 'Open TV View to cast this tab';
-    castButton.addEventListener('click', () => {
-        startTvCast(tvUrl, castButton).catch(err => {
-            console.debug('TV cast failed', err);
-            castButton.classList.remove('is-casting');
-            castButton.title = 'Open TV View manually from the browser menu';
-        });
-    });
-}
-
-function getTvDisplayUrl () {
-    const tvUrl = window.MCW_FLUID_TV_URL || '/magic_caster_wand_fluid/fluid-tv';
-    return new URL(tvUrl, window.location.href).href;
-}
-
-async function startTvCast (tvUrl, button) {
-    if (!tvUrl) return;
-    button.classList.add('is-casting');
-    button.title = 'Opening TV View';
-
-    const opened = window.open(tvUrl, '_blank', 'noopener');
-    if (!opened) throw new Error('Unable to open TV view');
-    button.title = 'TV View opened. Use your browser or phone cast controls.';
-    setTimeout(() => {
-        button.classList.remove('is-casting');
-        button.title = 'Open TV View to cast this tab';
-    }, 2500);
-}
-
 function setupWandConnectPanel () {
     const tab = document.getElementById('mcw-wand-connect-tab');
     const toggle = document.getElementById('mcw-wand-connect-toggle');
@@ -2317,7 +2283,6 @@ if (isTvDisplayMode) {
 }
 setupSpellGesturePanel();
 setupDrawSpellsToggle();
-setupCastButton();
 setupWandConnectPanel();
 updateOverlayVisibility();
 if (!isTvDisplayMode) publishFluidDisplayConfig();
